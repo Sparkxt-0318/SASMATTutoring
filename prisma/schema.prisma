@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RequestStatus {
+  OPEN
+  CLAIMED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum CreditStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  claimTokens     ClaimToken[]
+  claimedRequests TutoringRequest[] @relation("ClaimedBy")
+  credits         CreditLog[]
+}
+
+model TutoringRequest {
+  id           String        @id @default(cuid())
+  studentName  String
+  studentEmail String
+  gradeLevel   String
+  subject      String
+  topic        String        @db.Text
+  availability String        @db.Text
+  status       RequestStatus @default(OPEN)
+  claimedById  String?
+  claimedBy    Member?       @relation("ClaimedBy", fields: [claimedById], references: [id])
+  claimedAt    DateTime?
+  createdAt    DateTime      @default(now())
+
+  claimTokens ClaimToken[]
+  credit      CreditLog?
+
+  @@index([status, createdAt])
+}
+
+model ClaimToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  requestId String
+  memberId  String
+  emailedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  request TutoringRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  member  Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, memberId])
+}
+
+model CreditLog {
+  id          String       @id @default(cuid())
+  requestId   String       @unique
+  memberId    String
+  minutes     Int
+  notes       String?      @db.Text
+  status      CreditStatus @default(PENDING)
+  submittedAt DateTime     @default(now())
+  reviewedAt  DateTime?
+
+  request TutoringRequest @relation(fields: [requestId], references: [id])
+  member  Member          @relation(fields: [memberId], references: [id])
+
+  @@index([status])
+}
