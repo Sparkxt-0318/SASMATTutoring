@@ -16,7 +16,8 @@ and per-member hours goes to the officer report inbox every Monday morning.
 
 - [Next.js](https://nextjs.org) (App Router) + TypeScript + Tailwind CSS
 - [Prisma 7](https://prisma.io) + Postgres ([Neon](https://neon.tech) free tier in production)
-- [Resend](https://resend.com) for transactional email
+- Email through [Resend](https://resend.com) or any SMTP mailbox (school or Gmail account),
+  chosen with `EMAIL_PROVIDER`
 - Deployed on [Vercel](https://vercel.com) (free tier), cron schedules in `vercel.json`
 
 ## Local development
@@ -99,6 +100,12 @@ without signing in.
 
 Both routes require the `Authorization: Bearer <CRON_SECRET>` header (Vercel sends
 it automatically when `CRON_SECRET` is set).
+
+**Sending email without owning a domain (SMTP):** set `EMAIL_PROVIDER="smtp"`,
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` (an app password), and set
+`EMAIL_FROM` to that same mailbox. Gmail uses `smtp.gmail.com`; Microsoft 365 uses
+`smtp.office365.com`, but many schools disable password sign-in for SMTP there. Use
+the **Email** tab in `/admin` to send a test and see the exact error if it fails.
 
 **Email volume:** each request costs roughly `members + 2` emails. Resend's free
 tier is 100/day and 3,000/month, so with ~30 members that's about 3 requests per day.

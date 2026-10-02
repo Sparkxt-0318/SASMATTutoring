@@ -6,9 +6,9 @@ import { adminAlertEmail, requestBlastEmail } from "@/emails/templates";
 
 /**
  * Email every active member their personal claim link for a request.
- * Reuses existing ClaimToken rows on resend. Never throws: a failed blast
- * leaves `emailedAt` null (visible in the admin dashboard) and alerts the
- * officer inbox.
+ * Reuses existing ClaimToken rows on resend. Never throws: members whose email
+ * could not be sent keep `emailedAt` null (visible in the admin dashboard) and
+ * the officer inbox is alerted.
  */
 export async function sendRequestBlast(requestId: string): Promise<{ sent: number; total: number }> {
   const request = await prisma.tutoringRequest.findUniqueOrThrow({ where: { id: requestId } });
@@ -38,8 +38,9 @@ export async function sendRequestBlast(requestId: string): Promise<{ sent: numbe
     return { to: member.email, subject, html };
   });
 
+  let sentIndexes: number[];
   try {
-    await sendBatch(emails);
+    sentIndexes = await sendBatch(emails);
   } catch (err) {
     console.error("Request blast failed:", err);
     await sendAdminAlertFor(
@@ -51,12 +52,19 @@ export async function sendRequestBlast(requestId: string): Promise<{ sent: numbe
     return { sent: 0, total: members.length };
   }
 
-  const now = new Date();
   await prisma.claimToken.updateMany({
-    where: { id: { in: tokens.map((t) => t.id) } },
-    data: { emailedAt: now },
+    where: { id: { in: sentIndexes.map((i) => tokens[i].id) } },
+    data: { emailedAt: new Date() },
   });
-  return { sent: members.length, total: members.length };
+
+  if (sentIndexes.length < members.length) {
+    const failed = members.length - sentIndexes.length;
+    await sendAdminAlertFor(
+      "Some member emails could not be sent",
+      `${failed} of ${members.length} members did not get the ${request.subject} request from ${request.studentName}. Open the admin dashboard and use "Resend blast" to retry.`,
+    );
+  }
+  return { sent: sentIndexes.length, total: members.length };
 }
 
 async function sendAdminAlertFor(title: string, message: string): Promise<void> {

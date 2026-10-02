@@ -1,3 +1,4 @@
+import nodemailer, { type Transporter } from "nodemailer";
 import { Resend } from "resend";
 
 export interface OutboundEmail {
@@ -7,12 +8,33 @@ export interface OutboundEmail {
   replyTo?: string;
 }
 
-function isDryRun(): boolean {
+/**
+ * Two ways to send, chosen with EMAIL_PROVIDER:
+ *  - "resend" (default): Resend API. Needs a verified domain to reach other people.
+ *  - "smtp": any mailbox that allows SMTP (a school or Gmail account, for example).
+ */
+export function emailProvider(): "resend" | "smtp" {
+  return process.env.EMAIL_PROVIDER === "smtp" ? "smtp" : "resend";
+}
+
+export function isDryRun(): boolean {
   return process.env.EMAIL_DRY_RUN === "true";
 }
 
 function fromAddress(): string {
   return process.env.EMAIL_FROM ?? "MAT Tutoring <onboarding@resend.dev>";
+}
+
+/** Non-secret summary for the admin Email tab. */
+export function emailStatus() {
+  return {
+    provider: emailProvider(),
+    from: fromAddress(),
+    smtpHost: emailProvider() === "smtp" ? (process.env.SMTP_HOST ?? "(not set)") : null,
+    dryRun: isDryRun(),
+    override: process.env.TEST_EMAIL_OVERRIDE || null,
+    reportEmail: process.env.REPORT_EMAIL || null,
+  };
 }
 
 /**
@@ -45,11 +67,50 @@ function resend(): Resend {
   return resendClient;
 }
 
+let smtpTransport: Transporter | null = null;
+function smtp(): Transporter {
+  if (!smtpTransport) {
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASSWORD;
+    if (!host || !user || !pass) {
+      throw new Error("SMTP is not set up. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.");
+    }
+    const port = Number(process.env.SMTP_PORT) || 587;
+    smtpTransport = nodemailer.createTransport({
+      host,
+      port,
+      // Port 465 uses TLS from the start; 587 upgrades with STARTTLS.
+      secure: port === 465,
+      auth: { user, pass },
+      pool: true,
+      maxConnections: 3,
+      connectionTimeout: 15_000,
+      socketTimeout: 30_000,
+    });
+  }
+  return smtpTransport;
+}
+
+async function sendViaSmtp(email: OutboundEmail): Promise<void> {
+  await smtp().sendMail({
+    from: fromAddress(),
+    to: email.to,
+    subject: email.subject,
+    html: email.html,
+    replyTo: email.replyTo,
+  });
+}
+
 /** Send a single email. Throws on failure; callers decide how to handle it. */
 export async function sendEmail(email: OutboundEmail): Promise<void> {
   const finalEmail = applyOverride(email);
   if (isDryRun()) {
     logDryRun([finalEmail]);
+    return;
+  }
+  if (emailProvider() === "smtp") {
+    await sendViaSmtp(finalEmail);
     return;
   }
   const { error } = await resend().emails.send({
@@ -65,8 +126,10 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
 }
 
 /**
- * Send a batch (used for the member blast, one API call for up to 100
- * recipients). Returns the indexes that were sent successfully.
+ * Send many emails (used for the member blast). Returns the indexes that were
+ * sent successfully. Resend sends one all-or-nothing API call; SMTP sends each
+ * message separately, so some can succeed while others fail. Throws only when
+ * nothing could be sent.
  */
 export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
   if (emails.length === 0) return [];
@@ -75,6 +138,20 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
     logDryRun(finalEmails);
     return emails.map((_, i) => i);
   }
+
+  if (emailProvider() === "smtp") {
+    const results = await Promise.allSettled(finalEmails.map((email) => sendViaSmtp(email)));
+    const sent = results.flatMap((r, i) => (r.status === "fulfilled" ? [i] : []));
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failures.length > 0) {
+      console.error(`SMTP batch: ${failures.length} of ${emails.length} failed`, failures[0].reason);
+    }
+    if (sent.length === 0) {
+      throw failures[0].reason instanceof Error ? failures[0].reason : new Error(String(failures[0].reason));
+    }
+    return sent;
+  }
+
   const { error } = await resend().batch.send(
     finalEmails.map((email) => ({
       from: fromAddress(),
