@@ -18,7 +18,7 @@ export async function claimRequest(token: string): Promise<void> {
   });
 
   // Invalid token or deactivated member: the claim page renders the
-  // explanation — just send them back to it.
+  // explanation, so just send them back to it.
   if (!claimToken || !claimToken.member.active) {
     redirect(`/claim/${token}`);
   }
@@ -33,12 +33,12 @@ export async function claimRequest(token: string): Promise<void> {
   });
 
   if (result.count !== 1) {
-    // Lost the race (or request was cancelled/expired/already started) — the
+    // Lost the race (or request was cancelled/expired/already started); the
     // page re-reads state and shows what happened.
     redirect(`/claim/${token}`);
   }
 
-  // The claim stands even if these emails fail — the success page always
+  // The claim stands even if these emails fail; the success page always
   // shows the student's contact info, so email is not the only channel.
   const { request, member } = claimToken;
   try {

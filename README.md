@@ -1,4 +1,4 @@
-# MAT Tutoring — Shanghai American School
+# MAT Tutoring: Shanghai American School
 
 Peer math tutoring platform for **Mu Alpha Theta** (MAT), SAS's math honor society.
 
@@ -29,7 +29,7 @@ npm run db:seed             # seed 3 FAKE dev members
 npm run dev                 # http://localhost:3000
 ```
 
-Keep `EMAIL_DRY_RUN="true"` locally — emails are printed to the dev-server console
+Keep `EMAIL_DRY_RUN="true"` locally: emails are printed to the dev-server console
 instead of being sent. To test real delivery, set `TEST_EMAIL_OVERRIDE` to your own
 address: every outbound email is rerouted there with the original recipient noted
 in the subject line.
@@ -45,8 +45,8 @@ Useful commands:
 
 ## How claiming stays race-safe
 
-`claimRequest` (src/lib/actions/claims.ts) issues a single conditional update —
-`UPDATE ... WHERE id = ? AND status = 'OPEN'` — so when several members click at
+`claimRequest` (src/lib/actions/claims.ts) issues a single conditional update,
+`UPDATE ... WHERE id = ? AND status = 'OPEN'`, so when several members click at
 once, Postgres lets exactly one through; everyone else sees "already claimed".
 The claim page performs **zero writes on GET**: email scanners that prefetch
 links can never claim a request, because claiming requires pressing the confirm
@@ -65,15 +65,15 @@ Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
 ## Deploying (officer runbook)
 
-1. **Neon** — create a free project; copy the *pooled* connection string into
+1. **Neon**: create a free project; copy the *pooled* connection string into
    `DATABASE_URL` and the direct one into `DIRECT_URL`.
-2. **Resend** — create a free account, get an API key. Verify your sending domain
+2. **Resend**: create a free account, get an API key. Verify your sending domain
    (DNS records) when you have one; until then `onboarding@resend.dev` works but
    only delivers to the Resend account owner's inbox (useful safety net for testing).
-3. **Vercel** — import this repo, framework preset Next.js. Add every variable from
+3. **Vercel**: import this repo, framework preset Next.js. Add every variable from
    `.env.example` in Project Settings → Environment Variables. Set `APP_URL` to the
    production URL, `EMAIL_DRY_RUN` empty/false, and leave `TEST_EMAIL_OVERRIDE`
-   set to your own email for the first smoke test — remove it when everything checks out.
+   set to your own email for the first smoke test, then remove it when everything checks out.
 4. Database tables are created automatically: Vercel runs the `vercel-build` script
    (`prisma generate && prisma migrate deploy && next build`), which applies any
    pending migrations to Neon on every deploy. This needs `DIRECT_URL` (the
@@ -84,15 +84,15 @@ Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
 **Cron jobs** (already configured in `vercel.json`, times are UTC):
 
-- `/api/cron/weekly-report` — Mondays 01:00 UTC (09:00 Shanghai): hours digest to `REPORT_EMAIL`
-- `/api/cron/daily` — 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
+- `/api/cron/weekly-report`: Mondays 01:00 UTC (09:00 Shanghai): hours digest to `REPORT_EMAIL`
+- `/api/cron/daily`: 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
   meeting time has already started, and tells the report inbox so you can follow up
 
 Both routes require the `Authorization: Bearer <CRON_SECRET>` header (Vercel sends
 it automatically when `CRON_SECRET` is set).
 
 **Email volume:** each request costs roughly `members + 2` emails. Resend's free
-tier is 100/day and 3,000/month — with ~30 members that's about 3 requests per day.
+tier is 100/day and 3,000/month, so with ~30 members that's about 3 requests per day.
 If the club outgrows that, upgrade Resend or trim the roster blast.
 
 ## Records
@@ -104,4 +104,4 @@ If the club outgrows that, upgrade Resend or trim the roster blast.
 - Every credit is listed under "Credited" in `/admin/hours`, with an Undo button
   that puts the session back in the review queue.
 - The "did your teacher help first?" survey answer is visible to officers only
-  (Requests tab) — it is never shown to tutors or included in any email.
+  (Requests tab); it is never shown to tutors or included in any email.

@@ -45,7 +45,7 @@ function resend(): Resend {
   return resendClient;
 }
 
-/** Send a single email. Throws on failure — callers decide how to handle it. */
+/** Send a single email. Throws on failure; callers decide how to handle it. */
 export async function sendEmail(email: OutboundEmail): Promise<void> {
   const finalEmail = applyOverride(email);
   if (isDryRun()) {
@@ -60,12 +60,12 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
     replyTo: finalEmail.replyTo,
   });
   if (error) {
-    throw new Error(`Resend error: ${error.name} — ${error.message}`);
+    throw new Error(`Resend error: ${error.name}: ${error.message}`);
   }
 }
 
 /**
- * Send a batch (used for the member blast — one API call for up to 100
+ * Send a batch (used for the member blast, one API call for up to 100
  * recipients). Returns the indexes that were sent successfully.
  */
 export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
@@ -85,7 +85,7 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
     })),
   );
   if (error) {
-    throw new Error(`Resend batch error: ${error.name} — ${error.message}`);
+    throw new Error(`Resend batch error: ${error.name}: ${error.message}`);
   }
   return emails.map((_, i) => i);
 }

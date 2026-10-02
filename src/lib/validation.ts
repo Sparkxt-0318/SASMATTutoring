@@ -57,7 +57,7 @@ export const requestSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["startTime"],
-        message: "That time has already passed — please choose a time in the future.",
+        message: "That time has already passed. Please choose a time in the future.",
       });
       return;
     }

@@ -28,7 +28,7 @@ export function requestBlastEmail(request: RequestInfo, claimUrl: string) {
     [
       heading("New tutoring request"),
       paragraph(
-        "A student is looking for help. First member to confirm gets the session — claim it only if you can make the meeting time.",
+        "A student is looking for help. First member to confirm gets the session. Claim it only if you can make the meeting time.",
       ),
       detailRows([
         ["Course", request.subject],
@@ -38,7 +38,7 @@ export function requestBlastEmail(request: RequestInfo, claimUrl: string) {
       ]),
       button("Claim this request", claimUrl),
       paragraph(
-        `<span style="font-size:13px;color:#86868b;">This link is personal to you — don't forward it. The student's contact details are shared with whoever claims first. Times are Shanghai time.</span>`,
+        `<span style="font-size:13px;color:#86868b;">This link is personal to you, so don't forward it. The student's contact details are shared with whoever claims first. Times are Shanghai time.</span>`,
       ),
     ].join(""),
   );
@@ -53,7 +53,7 @@ export function tutorConfirmationEmail(request: RequestInfo, tutorName: string) 
     [
       heading("It's yours! 🎉"),
       paragraph(
-        `Hi ${escapeHtml(tutorName)} — you claimed this request. Please email ${escapeHtml(request.studentName)} within 24 hours to confirm the time and pick a spot to meet.`,
+        `Hi ${escapeHtml(tutorName)}, you claimed this request. Please email ${escapeHtml(request.studentName)} within 24 hours to confirm the time and pick a spot to meet.`,
       ),
       detailRows([
         ["Student", request.studentName],
@@ -64,7 +64,7 @@ export function tutorConfirmationEmail(request: RequestInfo, tutorName: string) 
         ["Meeting time", meetingLabel(request)],
       ]),
       paragraph(
-        `<span style="font-size:13px;color:#86868b;">There's nothing to log afterwards — officers record tutoring hours themselves every weekend, using the meeting time above.</span>`,
+        `<span style="font-size:13px;color:#86868b;">There's nothing to log afterwards. Officers record tutoring hours themselves every weekend, using the meeting time above.</span>`,
       ),
     ].join(""),
   );
@@ -79,7 +79,7 @@ export function studentIntroEmail(request: RequestInfo, tutorName: string, tutor
     [
       heading("You've got a tutor"),
       paragraph(
-        `Hi ${escapeHtml(request.studentName)} — <strong>${escapeHtml(tutorName)}</strong> from Mu Alpha Theta will be your tutor for <strong>${escapeHtml(request.subject)}</strong>.`,
+        `Hi ${escapeHtml(request.studentName)}, <strong>${escapeHtml(tutorName)}</strong> from Mu Alpha Theta will be your tutor for <strong>${escapeHtml(request.subject)}</strong>.`,
       ),
       detailRows([
         ["Your tutor", tutorName],
@@ -88,7 +88,7 @@ export function studentIntroEmail(request: RequestInfo, tutorName: string, tutor
         ["Meeting time", meetingLabel(request)],
       ]),
       paragraph(
-        `${escapeHtml(tutorName)} will reach out soon to confirm where to meet — or you can email them directly (just reply to this email).`,
+        `${escapeHtml(tutorName)} will reach out soon to confirm where to meet, or you can email them directly (just reply to this email).`,
       ),
     ].join(""),
   );
@@ -111,9 +111,9 @@ export interface DigestData {
   members: DigestMemberRow[];
 }
 
-/** 4. Weekly digest — sent ONLY to REPORT_EMAIL. */
+/** 4. Weekly digest, sent ONLY to REPORT_EMAIL. */
 export function weeklyDigestEmail(data: DigestData) {
-  const subject = `MAT weekly hours — ${minutesToHours(data.totalMinutesAllTime)}h total`;
+  const subject = `MAT weekly hours: ${minutesToHours(data.totalMinutesAllTime)}h total`;
 
   const memberRows = data.members
     .map(
@@ -121,7 +121,7 @@ export function weeklyDigestEmail(data: DigestData) {
         <td style="padding:9px 0;font-size:14px;color:#1d1d1f;border-bottom:1px solid #e8e8ed;">${escapeHtml(m.name)}</td>
         <td style="padding:9px 0;font-size:14px;color:#1d1d1f;text-align:right;border-bottom:1px solid #e8e8ed;">${minutesToHours(m.totalMinutes)}h</td>
         <td style="padding:9px 0;font-size:14px;color:#6e6e73;text-align:right;border-bottom:1px solid #e8e8ed;">${m.sessionCount}</td>
-        <td style="padding:9px 0;font-size:14px;color:${m.weekMinutes > 0 ? "#0071e3" : "#86868b"};text-align:right;border-bottom:1px solid #e8e8ed;">${m.weekMinutes > 0 ? `+${formatMinutes(m.weekMinutes)}` : "—"}</td>
+        <td style="padding:9px 0;font-size:14px;color:${m.weekMinutes > 0 ? "#0071e3" : "#86868b"};text-align:right;border-bottom:1px solid #e8e8ed;">${m.weekMinutes > 0 ? `+${formatMinutes(m.weekMinutes)}` : "0"}</td>
       </tr>`,
     )
     .join("");
@@ -137,7 +137,7 @@ export function weeklyDigestEmail(data: DigestData) {
       </div>`,
       data.awaitingCreditCount > 0
         ? paragraph(
-            `⏳ <strong>${data.awaitingCreditCount} session${data.awaitingCreditCount === 1 ? "" : "s"} waiting for credit</strong> — record them in the admin dashboard's Hours tab during your weekend check.`,
+            `⏳ <strong>${data.awaitingCreditCount} session${data.awaitingCreditCount === 1 ? "" : "s"} waiting for credit</strong>. Record them in the admin dashboard's Hours tab during your weekend check.`,
           )
         : "",
       `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;">

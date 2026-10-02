@@ -19,7 +19,7 @@ export default function RequestSuccessPage() {
           <h1 className="mt-5 text-3xl font-semibold tracking-tight">Request received.</h1>
           <p className="mt-3 leading-relaxed text-muted">
             Every Mu Alpha Theta member just got a notification. As soon as one claims your
-            request, you&rsquo;ll get an email introducing your tutor — keep an eye on your school
+            request, you&rsquo;ll get an email introducing your tutor. Keep an eye on your school
             inbox.
           </p>
           <div className="mt-8">

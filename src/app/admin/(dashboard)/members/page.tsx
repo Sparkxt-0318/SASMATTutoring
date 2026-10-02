@@ -39,7 +39,7 @@ export default async function AdminMembersPage() {
             {members.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-muted">
-                  No members yet — add your roster above.
+                  No members yet. Add your roster above.
                 </td>
               </tr>
             )}

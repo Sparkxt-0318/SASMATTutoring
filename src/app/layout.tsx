@@ -4,8 +4,8 @@ import { CLUB_NAME, SCHOOL_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: {
-    default: `MAT Tutoring — ${SCHOOL_NAME}`,
-    template: "%s — MAT Tutoring",
+    default: `MAT Tutoring | ${SCHOOL_NAME}`,
+    template: "%s | MAT Tutoring",
   },
   description: `Free peer math tutoring from ${CLUB_NAME} at ${SCHOOL_NAME}. Request help and get matched with a student tutor.`,
 };

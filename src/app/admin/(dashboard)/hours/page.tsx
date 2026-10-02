@@ -42,7 +42,7 @@ export default async function AdminHoursPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Hours</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Credit is never automatic. Once a week, go through the sessions below and record the time
-        each tutor earned — it defaults to the length the student booked.
+        each tutor earned. It defaults to the length the student booked.
       </p>
 
       <h2 className="mt-8 text-lg font-semibold tracking-tight">
@@ -56,7 +56,7 @@ export default async function AdminHoursPage() {
 
       {ended.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white p-10 text-center shadow-sm">
-          <p className="text-muted">All caught up — no finished sessions waiting for credit.</p>
+          <p className="text-muted">All caught up. No finished sessions waiting for credit.</p>
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
@@ -123,7 +123,7 @@ export default async function AdminHoursPage() {
               <tbody>
                 {upcoming.map((request) => (
                   <tr key={request.id} className="border-b border-hairline/40 last:border-0">
-                    <td className="px-5 py-3.5 font-medium">{request.claimedBy?.name ?? "—"}</td>
+                    <td className="px-5 py-3.5 font-medium">{request.claimedBy?.name ?? "Unknown tutor"}</td>
                     <td className="px-5 py-3.5 text-muted">
                       {request.subject} with {request.studentName}
                     </td>
@@ -162,7 +162,7 @@ export default async function AdminHoursPage() {
                   </td>
                   <td className="px-5 py-3.5">{formatMinutes(credit.minutes)}</td>
                   <td className="px-5 py-3.5 whitespace-nowrap text-muted">
-                    {credit.reviewedAt ? formatDate(credit.reviewedAt) : "—"}
+                    {credit.reviewedAt ? formatDate(credit.reviewedAt) : "Unknown"}
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <form action={revokeCredit.bind(null, credit.id)}>

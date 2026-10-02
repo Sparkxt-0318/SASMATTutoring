@@ -72,7 +72,7 @@ export default async function ClaimedPage({ params }: { params: Promise<{ token:
         </dl>
 
         <p className="mt-6 text-sm text-muted">
-          Nothing to log afterwards — officers record tutoring hours every weekend.
+          Nothing to log afterwards. Officers record tutoring hours every weekend.
         </p>
       </div>
     </TokenShell>

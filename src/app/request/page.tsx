@@ -20,7 +20,7 @@ export default function RequestPage() {
           <div className="rise-in text-center">
             <h1 className="text-4xl font-semibold tracking-tight">Request a tutor.</h1>
             <p className="mt-3 text-muted">
-              Takes about a minute. A Mu Alpha Theta member will reach out by email — usually the
+              Takes about a minute. A Mu Alpha Theta member will reach out by email, usually the
               same day.
             </p>
           </div>

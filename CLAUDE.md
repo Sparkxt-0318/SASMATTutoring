@@ -8,23 +8,30 @@ automatic: officers record it weekly in the admin Hours tab (`awardCredit` in
 contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
 `MEMBER_HOURS_GOAL`). See README.md for the full runbook.
 
+## Style rules
+
+- NEVER use em dashes (or en dashes) anywhere: UI copy, emails, code comments,
+  docs, commit messages, or replies. Use commas, colons, periods, or "to" for
+  ranges instead. Check with a search for the characters before committing.
+- Design stays Apple-style: simple, sleek, modern, lots of white space.
+
 ## Key facts
 
 - Next.js App Router + TypeScript + Tailwind 4. Prisma 7 (client generated into
-  `src/generated/prisma`, gitignored — run `npx prisma generate` after install).
+  `src/generated/prisma`, gitignored; run `npx prisma generate` after install).
 - DB URLs live in `prisma.config.ts` (Prisma 7 style), not in `schema.prisma`.
   App connects through `@prisma/adapter-pg` in `src/lib/db.ts`.
 - Mutations are server actions in `src/lib/actions/`. Every admin action calls
-  `requireAdmin()` itself — the admin layout check alone is not enough.
+  `requireAdmin()` itself; the admin layout check alone is not enough.
 - Claiming must stay race-safe: a conditional `updateMany` guarded on
-  `status: "OPEN"` (see `src/lib/actions/claims.ts`). Never claim on GET —
+  `status: "OPEN"` (see `src/lib/actions/claims.ts`). Never claim on GET:
   email scanners prefetch links.
-- Prisma 7 does not regenerate the client after `migrate dev` — run
+- Prisma 7 does not regenerate the client after `migrate dev`; run
   `npx prisma generate` yourself. Vercel builds with `vercel-build`, which also
   runs `prisma migrate deploy`.
 - Meeting times are entered in Shanghai time (fixed +08:00) and stored as UTC;
   helpers live in `src/lib/constants.ts`. `receivedTeacherHelp` is survey data
-  for officers only — never show it to tutors or put it in emails.
+  for officers only; never show it to tutors or put it in emails.
 - Emails: `src/lib/email.ts` honors `EMAIL_DRY_RUN` (log only) and
   `TEST_EMAIL_OVERRIDE` (reroute everything). Keep dry-run on in dev; never put
   real member emails in `prisma/seed.ts`.

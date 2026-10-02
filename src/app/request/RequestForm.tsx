@@ -23,7 +23,7 @@ export function RequestForm({ minDate }: { minDate: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-6" noValidate>
-      {/* Honeypot — hidden from real users, catches naive bots. */}
+      {/* Honeypot: hidden from real users, catches naive bots. */}
       <input
         type="text"
         name="website"
@@ -96,7 +96,7 @@ export function RequestForm({ minDate }: { minDate: string }) {
           id="topic"
           name="topic"
           rows={4}
-          placeholder="e.g. Solving trig identities — I get lost after the first substitution…"
+          placeholder="e.g. Solving trig identities. I get lost after the first substitution…"
           defaultValue={state.values.topic}
           required
         />

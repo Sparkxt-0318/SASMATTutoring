@@ -6,7 +6,7 @@ import { adminAlertEmail, requestBlastEmail } from "@/emails/templates";
 
 /**
  * Email every active member their personal claim link for a request.
- * Reuses existing ClaimToken rows on resend. Never throws — a failed blast
+ * Reuses existing ClaimToken rows on resend. Never throws: a failed blast
  * leaves `emailedAt` null (visible in the admin dashboard) and alerts the
  * officer inbox.
  */

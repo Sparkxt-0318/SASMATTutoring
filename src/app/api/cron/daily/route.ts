@@ -4,7 +4,7 @@ import { adminAlertEmail } from "@/emails/templates";
 import { formatMeeting } from "@/lib/constants";
 
 /**
- * Daily maintenance — scheduled in vercel.json. Expires OPEN requests whose
+ * Daily maintenance, scheduled in vercel.json. Expires OPEN requests whose
  * meeting time has already started (nobody can claim them any more) and tells
  * the officer inbox so they can follow up with those students.
  */
@@ -25,7 +25,7 @@ export async function GET(request: Request): Promise<Response> {
     const summary = toExpire
       .map(
         (r) =>
-          `• ${r.subject} for ${r.studentName} (${r.studentEmail}) — wanted ${formatMeeting(r.meetingStart, r.meetingEnd)}`,
+          `• ${r.subject} for ${r.studentName} (${r.studentEmail}), wanted ${formatMeeting(r.meetingStart, r.meetingEnd)}`,
       )
       .join("\n");
     const alert = adminAlertEmail(

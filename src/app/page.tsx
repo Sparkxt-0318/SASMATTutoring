@@ -6,7 +6,7 @@ import { COURSES, CLUB_NAME, SCHOOL_NAME } from "@/lib/constants";
 const STEPS = [
   {
     title: "Tell us what you need",
-    body: "Fill out a short form — your course, the topic you're stuck on, and the time you'd like to meet.",
+    body: "Fill out a short form with your course, the topic you're stuck on, and the time you'd like to meet.",
   },
   {
     title: "A tutor claims it",
@@ -35,7 +35,7 @@ export default function LandingPage() {
             </h1>
             <p className="rise-in rise-in-delay-1 mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted">
               Free one-on-one tutoring from {SCHOOL_NAME}&rsquo;s math honor society. Any math
-              course, any topic — a tutor usually claims your request the same day.
+              course, any topic. A tutor usually claims your request the same day.
             </p>
             <div className="rise-in rise-in-delay-2 mt-9 flex items-center justify-center gap-4">
               <ButtonLink href="/request" size="lg">
@@ -75,7 +75,7 @@ export default function LandingPage() {
               Every math course at SAS.
             </h2>
             <p className="mt-4 text-lg text-muted">
-              From IM1 to Multivariable Calculus — someone in {CLUB_NAME} has aced it.
+              From IM1 to Multivariable Calculus. Someone in {CLUB_NAME} has aced it.
             </p>
             <div className="mt-10 flex flex-wrap justify-center gap-2.5">
               {COURSES.map((course) => (

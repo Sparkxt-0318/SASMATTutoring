@@ -1,5 +1,5 @@
 /**
- * Dev seed — creates a few FAKE members so the flows can be tested locally.
+ * Dev seed: creates a few FAKE members so the flows can be tested locally.
  * Never put real member emails here; use aliases you control.
  */
 import "dotenv/config";

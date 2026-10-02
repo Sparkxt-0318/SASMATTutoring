@@ -72,7 +72,7 @@ export function formatDate(date: Date): string {
   }).format(date);
 }
 
-/** e.g. "Fri, Oct 9 · 12:30 PM – 1:15 PM" (Shanghai time). */
+/** e.g. "Fri, Oct 9 · 12:30 PM to 1:15 PM" (Shanghai time). */
 export function formatMeeting(start: Date, end: Date): string {
   const day = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
@@ -85,7 +85,7 @@ export function formatMeeting(start: Date, end: Date): string {
     hour: "numeric",
     minute: "2-digit",
   });
-  return `${day} · ${time.format(start)} – ${time.format(end)}`;
+  return `${day} · ${time.format(start)} to ${time.format(end)}`;
 }
 
 export function formatMinutes(minutes: number): string {

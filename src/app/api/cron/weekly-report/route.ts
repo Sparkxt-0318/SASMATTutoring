@@ -3,7 +3,7 @@ import { sendEmail } from "@/lib/email";
 import { weeklyDigestEmail } from "@/emails/templates";
 
 /**
- * Weekly hours digest — scheduled in vercel.json for Monday 01:00 UTC
+ * Weekly hours digest, scheduled in vercel.json for Monday 01:00 UTC
  * (09:00 in Shanghai). Sends ONLY to REPORT_EMAIL.
  */
 export async function GET(request: Request): Promise<Response> {

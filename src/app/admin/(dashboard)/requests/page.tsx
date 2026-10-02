@@ -106,7 +106,7 @@ export default async function AdminRequestsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-4">{request.claimedBy?.name ?? "—"}</td>
+                    <td className="px-5 py-4">{request.claimedBy?.name ?? "None yet"}</td>
                     <td className="px-5 py-4 whitespace-nowrap text-muted">
                       {formatDate(request.createdAt)}
                     </td>

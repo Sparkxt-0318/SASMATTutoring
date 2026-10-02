@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// This page performs ZERO writes on GET — email scanners that prefetch links
+// This page performs ZERO writes on GET: email scanners that prefetch links
 // can never claim a request. Claiming happens only via the POSTed form below.
 export default async function ClaimPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -55,7 +55,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
           body={
             wasMe
               ? "This request is yours. Check your email for the student's contact details."
-              : "Someone beat you to it this time — the next request could be yours."
+              : "Someone beat you to it this time. The next request could be yours."
           }
           linkHref={wasMe ? `/claim/${token}/claimed` : undefined}
           linkLabel={wasMe ? "View student details" : undefined}
@@ -70,7 +70,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
         <TokenCard
           icon="🗓️"
           title={request.status === "CANCELLED" ? "This request was cancelled" : "This request expired"}
-          body="No action needed — thanks for checking, and keep an eye out for the next one."
+          body="No action needed. Thanks for checking, and keep an eye out for the next one."
         />
       </TokenShell>
     );
@@ -100,7 +100,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
           <StatusBadge status={request.status} />
         </div>
         <p className="mt-2 text-sm text-muted">
-          Hi {member.name.split(" ")[0]} — first member to confirm gets it.
+          Hi {member.name.split(" ")[0]}, first member to confirm gets it.
         </p>
 
         <dl className="mt-6 space-y-4 rounded-xl bg-surface p-5">

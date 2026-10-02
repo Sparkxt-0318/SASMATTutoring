@@ -43,7 +43,7 @@ model TutoringRequest {
   // The session the student asked for (stored as UTC, entered in Shanghai time).
   meetingStart DateTime
   meetingEnd   DateTime
-  // Survey only — null for requests that predate the question. Never shown to tutors.
+  // Survey only: null for requests that predate the question. Never shown to tutors.
   receivedTeacherHelp Boolean?
   status       RequestStatus @default(OPEN)
   claimedById  String?
