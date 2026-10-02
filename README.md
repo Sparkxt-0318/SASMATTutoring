@@ -10,7 +10,8 @@ choose the exact date and start/end time of the session when they request it.
 week (the Hours tab), and record the minutes each tutor earned. Each member's
 progress toward the hours goal is shown as a contribution-style grid (green =
 done, blank = still to fill). A weekly digest with the all-time combined total
-and per-member hours goes to the officer report inbox every Monday morning.
+and per-member hours goes to the officer report inbox every Friday night, with a CSV
+backup of the whole system attached.
 
 ## Stack
 
@@ -94,9 +95,12 @@ without signing in.
 
 **Cron jobs** (already configured in `vercel.json`, times are UTC):
 
-- `/api/cron/weekly-report`: Mondays 01:00 UTC (09:00 Shanghai): hours digest to `REPORT_EMAIL`
+- `/api/cron/weekly-report`: Fridays 12:00 UTC (Friday 20:00 Shanghai): hours digest to
+  `REPORT_EMAIL` with three CSV backups attached (members, every session, hours)
 - `/api/cron/daily`: 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
-  meeting time has already started, and tells the report inbox so you can follow up
+  meeting time has already started, and emails `REPORT_EMAIL` only when something needs
+  attention (a request starting within 24 hours with no tutor, or member emails that
+  did not go out)
 
 Both routes require the `Authorization: Bearer <CRON_SECRET>` header (Vercel sends
 it automatically when `CRON_SECRET` is set).

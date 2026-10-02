@@ -162,6 +162,9 @@ export function weeklyDigestEmail(data: DigestData) {
             `⏳ <strong>${data.awaitingCreditCount} session${data.awaitingCreditCount === 1 ? "" : "s"} waiting for credit</strong>. Record them in the admin dashboard's Hours tab during your weekend check.`,
           )
         : "",
+      paragraph(
+        `<span style="font-size:13px;color:#86868b;">Your weekly backup is attached: the member list, every tutoring session, and the hours totals. Keep these emails, or save the files somewhere safe.</span>`,
+      ),
       `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;">
         <thead>
           <tr>
@@ -181,6 +184,9 @@ export function weeklyDigestEmail(data: DigestData) {
 /** 5. Operational alert to the officer inbox (blast failures etc.). */
 export function adminAlertEmail(title: string, message: string) {
   const subject = `[MAT Tutoring] ${title}`;
-  const html = emailShell(subject, [heading(title), paragraph(escapeHtml(message))].join(""));
+  const html = emailShell(
+    subject,
+    [heading(title), paragraph(escapeHtml(message).replace(/\n/g, "<br/>"))].join(""),
+  );
   return { subject, html };
 }

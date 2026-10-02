@@ -6,6 +6,8 @@ export interface OutboundEmail {
   subject: string;
   html: string;
   replyTo?: string;
+  /** Plain-text files to attach (used for the weekly CSV backup). */
+  attachments?: Array<{ filename: string; content: string }>;
 }
 
 /**
@@ -54,7 +56,7 @@ function applyOverride(email: OutboundEmail): OutboundEmail {
 function logDryRun(emails: OutboundEmail[]): void {
   for (const email of emails) {
     console.log(
-      `[email dry-run] to=${email.to} replyTo=${email.replyTo ?? "-"} subject="${email.subject}" html=${email.html.length} bytes`,
+      `[email dry-run] to=${email.to} replyTo=${email.replyTo ?? "-"} subject="${email.subject}" html=${email.html.length} bytes attachments=${email.attachments?.length ?? 0}`,
     );
   }
 }
@@ -99,6 +101,11 @@ async function sendViaSmtp(email: OutboundEmail): Promise<void> {
     subject: email.subject,
     html: email.html,
     replyTo: email.replyTo,
+    attachments: email.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      contentType: "text/csv; charset=utf-8",
+    })),
   });
 }
 
@@ -119,6 +126,10 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
     subject: finalEmail.subject,
     html: finalEmail.html,
     replyTo: finalEmail.replyTo,
+    attachments: finalEmail.attachments?.map((a) => ({
+      filename: a.filename,
+      content: Buffer.from(a.content, "utf-8"),
+    })),
   });
   if (error) {
     throw new Error(`Resend error: ${error.name}: ${error.message}`);
