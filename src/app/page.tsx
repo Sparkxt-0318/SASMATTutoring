@@ -105,10 +105,14 @@ export default function LandingPage() {
               <div className="rounded-2xl bg-white p-8 shadow-sm">
                 <h3 className="text-xl font-semibold tracking-tight">Are you a member?</h3>
                 <p className="mt-3 leading-relaxed text-muted">
-                  There is no account to make and nothing to log in to. When a student asks for a
-                  tutor, you get an email with your own Claim button. The first member to confirm
-                  becomes the tutor. Opening that same link later also shows your hours progress.
+                  Sign in to see your hours and progress, claim open requests, and find the
+                  details of every session you tutor. You also still get an email with a Claim
+                  button whenever a student asks for help. The first member to confirm becomes the
+                  tutor.
                 </p>
+                <div className="mt-6">
+                  <ButtonLink href="/member/login">Member login</ButtonLink>
+                </div>
               </div>
               <div className="rounded-2xl bg-white p-8 shadow-sm">
                 <h3 className="text-xl font-semibold tracking-tight">Are you an officer?</h3>

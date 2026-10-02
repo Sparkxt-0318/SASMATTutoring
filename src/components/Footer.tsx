@@ -8,11 +8,12 @@ export function Footer() {
         <p className="text-sm text-muted">
           {CLUB_NAME} · {SCHOOL_NAME}
         </p>
+        <p className="text-xs text-faint">Free peer tutoring, by students, for students.</p>
         <p className="text-xs text-faint">
-          Free peer tutoring, by students, for students.
-        </p>
-        <p className="text-xs text-faint">
-          MAT members: no login needed, check your email for a claim link.{" "}
+          <Link href="/member/login" className="text-muted underline-offset-2 hover:underline">
+            Member login
+          </Link>
+          {" · "}
           <Link href="/admin" className="text-muted underline-offset-2 hover:underline">
             Officer login
           </Link>

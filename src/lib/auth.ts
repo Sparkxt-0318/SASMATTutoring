@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 const COOKIE_NAME = "mat_admin_session";
 const SESSION_DAYS = 30;
 
-function secretKey(): Uint8Array {
+export function secretKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error("SESSION_SECRET must be set to at least 32 characters.");

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
@@ -25,6 +26,12 @@ export default async function AdminLoginPage() {
           <LoginForm />
         </div>
       </div>
+      <p className="mt-6 text-xs text-faint">
+        MAT member?{" "}
+        <Link href="/member/login" className="text-muted hover:underline">
+          Member login
+        </Link>
+      </p>
     </main>
   );
 }

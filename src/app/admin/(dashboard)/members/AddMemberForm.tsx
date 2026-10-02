@@ -19,9 +19,9 @@ export function AddMemberForm() {
   const [state, formAction] = useActionState(addMember, {} as MemberFormState);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Clear the inputs after a successful add (no error returned).
+  // Clear the inputs after a successful add.
   useEffect(() => {
-    if (state.error === undefined) formRef.current?.reset();
+    if (state.added) formRef.current?.reset();
   }, [state]);
 
   return (
@@ -32,6 +32,20 @@ export function AddMemberForm() {
         <SubmitButton />
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.added && (
+        <div className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
+          <p>
+            Added {state.added.name}. Temporary password, shown only now:{" "}
+            <code className="rounded-lg bg-white px-2.5 py-1 font-mono text-foreground">
+              {state.added.password}
+            </code>
+          </p>
+          <p className="mt-2 text-xs">
+            Give it to them privately. They sign in at /member/login with {state.added.email} and
+            then choose their own password.
+          </p>
+        </div>
+      )}
     </form>
   );
 }

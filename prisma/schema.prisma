@@ -28,6 +28,13 @@ model Member {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  // Site login. Officers hand out a temporary password and the member must
+  // replace it on first sign in. Repeated failures lock the account briefly.
+  passwordHash       String?
+  mustChangePassword Boolean   @default(false)
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+
   claimTokens     ClaimToken[]
   claimedRequests TutoringRequest[] @relation("ClaimedBy")
   credits         CreditLog[]

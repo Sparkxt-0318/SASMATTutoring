@@ -29,6 +29,13 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
 - Prisma 7 does not regenerate the client after `migrate dev`; run
   `npx prisma generate` yourself. Vercel builds with `vercel-build`, which also
   runs `prisma migrate deploy`.
+- Two separate logins: officers use the shared `ADMIN_PASSWORD` (`src/lib/auth.ts`),
+  members use roster email + their own password (`src/lib/member-auth.ts`,
+  `src/lib/password.ts`, scrypt, no extra dependency). Officers issue temporary
+  passwords; members must change them on first sign in. Member sessions are
+  re-checked against the database on every request. Every member server action
+  must call `requireMember()`. Claiming (email link and dashboard) goes through
+  `claimForMember` in `src/lib/claiming.ts`.
 - Meeting times are entered in Shanghai time (fixed +08:00) and stored as UTC;
   helpers live in `src/lib/constants.ts`. `receivedTeacherHelp` is survey data
   for officers only; never show it to tutors or put it in emails.

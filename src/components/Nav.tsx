@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const loginLink = "text-sm text-muted transition-colors hover:text-foreground";
+
 /** Frosted, sticky top navigation shared by the public pages. */
 export function Nav() {
   return (
@@ -9,10 +11,10 @@ export function Nav() {
           MAT <span className="font-normal text-muted">Tutoring</span>
         </Link>
         <div className="flex items-center gap-5">
-          <Link
-            href="/admin"
-            className="text-sm text-muted transition-colors hover:text-foreground"
-          >
+          <Link href="/member/login" className={loginLink}>
+            Member login
+          </Link>
+          <Link href="/admin" className={`hidden sm:inline ${loginLink}`}>
             Officer login
           </Link>
           <Link
