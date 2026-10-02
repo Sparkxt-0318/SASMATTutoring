@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { claimForMember } from "@/lib/claiming";
+import { claimForMember, reopenClaimedRequest } from "@/lib/claiming";
 import {
   createMemberSession,
   destroyMemberSession,
@@ -100,6 +100,13 @@ export async function changeMemberPassword(
   // The old session no longer matches the new password, so issue a fresh one.
   await createMemberSession(updated);
   redirect("/member");
+}
+
+/** A tutor can't make a session they claimed: give it back so someone else can take it. */
+export async function releaseMyClaim(requestId: string): Promise<void> {
+  const member = await requireMember();
+  const released = await reopenClaimedRequest(requestId, { onlyMemberId: member.id });
+  redirect(`/member?notice=${released ? "released" : "cannot-release"}`);
 }
 
 /** Claim an open request straight from the member dashboard. */

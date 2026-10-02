@@ -21,12 +21,12 @@ function meetingLabel(request: RequestInfo): string {
 }
 
 /** 1. Blast to every active member. Deliberately excludes student contact info. */
-export function requestBlastEmail(request: RequestInfo, claimUrl: string) {
-  const subject = `New tutoring request: ${request.subject} (grade ${request.gradeLevel})`;
+export function requestBlastEmail(request: RequestInfo, claimUrl: string, reopened = false) {
+  const subject = `${reopened ? "Needs a tutor again" : "New tutoring request"}: ${request.subject} (grade ${request.gradeLevel})`;
   const html = emailShell(
     subject,
     [
-      heading("New tutoring request"),
+      heading(reopened ? "Needs a tutor again" : "New tutoring request"),
       paragraph(
         "A student is looking for help. First member to confirm gets the session. Claim it only if you can make the meeting time.",
       ),
@@ -89,6 +89,28 @@ export function studentIntroEmail(request: RequestInfo, tutorName: string, tutor
       ]),
       paragraph(
         `${escapeHtml(tutorName)} will reach out soon to confirm where to meet, or you can email them directly (just reply to this email).`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
+/** 3b. To the student when their tutor can no longer make it and the request is reopened. */
+export function tutorReleasedEmail(request: RequestInfo, tutorName: string) {
+  const subject = `Update on your MAT tutoring request`;
+  const html = emailShell(
+    subject,
+    [
+      heading("We're finding you a new tutor"),
+      paragraph(
+        `Hi ${escapeHtml(request.studentName)}, ${escapeHtml(tutorName)} can no longer make your <strong>${escapeHtml(request.subject)}</strong> session. We have asked every Mu Alpha Theta member to pick it up.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Requested time", meetingLabel(request)],
+      ]),
+      paragraph(
+        "You will get a new email introducing your tutor as soon as someone claims it. If nobody can make that time, reply to this email and an officer will help.",
       ),
     ].join(""),
   );

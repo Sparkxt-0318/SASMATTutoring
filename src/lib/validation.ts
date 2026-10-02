@@ -21,7 +21,9 @@ export const requestSchema = z
       .string()
       .trim()
       .min(2, "Please enter your full name.")
-      .max(100, "Name is too long."),
+      .max(100, "Name is too long.")
+      // No line breaks or control characters (they can corrupt email headers).
+      .regex(/^[^\u0000-\u001f\u007f]+$/, "Please use a normal name without line breaks."),
     studentEmail: z
       .string()
       .trim()

@@ -111,6 +111,22 @@ the **Email** tab in `/admin` to send a test and see the exact error if it fails
 tier is 100/day and 3,000/month, so with ~30 members that's about 3 requests per day.
 If the club outgrows that, upgrade Resend or trim the roster blast.
 
+## Safety limits and failure handling
+
+- **Spam on the request form:** one student address can have at most 3 waiting requests
+  and 5 per day, and the whole site accepts at most 30 requests per hour. Limits live in
+  `src/lib/constants.ts`.
+- **Tutor can't make it:** a member can give a claimed session back from their dashboard
+  (only before it starts), and officers can press Reopen in the Requests tab. The student is
+  told, and every member is alerted again.
+- **Mail problems never lose a request:** the request is saved first, the members' emails are
+  sent after the student sees the confirmation, and anyone who did not get an email stays
+  flagged ("Blast incomplete") until you press Resend blast. Check the Requests tab if
+  email has been unreliable.
+- **Backups:** Leaderboard has "Export all sessions", a CSV of every request, tutor and
+  credit. Download it now and then (for example at the end of each term).
+- **Cron routes** refuse every call if `CRON_SECRET` is not set.
+
 ## Records
 
 - Credited hours per member (and the combined all-time total) live on

@@ -1,7 +1,64 @@
 import "server-only";
+import { after } from "next/server";
 import { prisma } from "./db";
 import { sendAdminAlert, sendEmail } from "./email";
-import { adminAlertEmail, studentIntroEmail, tutorConfirmationEmail } from "@/emails/templates";
+import { sendRequestBlast } from "./blast";
+import {
+  adminAlertEmail,
+  studentIntroEmail,
+  tutorConfirmationEmail,
+  tutorReleasedEmail,
+} from "@/emails/templates";
+
+/**
+ * A tutor can no longer make a claimed session (or an officer reopens it): put
+ * it back in the pool. Only works while the meeting is still in the future and
+ * before any credit exists. Tells the student, then alerts every member again.
+ * Pass `onlyMemberId` so a member can only release their own claim.
+ */
+export async function reopenClaimedRequest(
+  requestId: string,
+  options: { onlyMemberId?: string } = {},
+): Promise<boolean> {
+  const before = await prisma.tutoringRequest.findUnique({
+    where: { id: requestId },
+    include: { claimedBy: true },
+  });
+  if (!before || !before.claimedBy) return false;
+
+  const result = await prisma.tutoringRequest.updateMany({
+    where: {
+      id: requestId,
+      status: "CLAIMED",
+      meetingStart: { gt: new Date() },
+      ...(options.onlyMemberId ? { claimedById: options.onlyMemberId } : {}),
+    },
+    data: { status: "OPEN", claimedById: null, claimedAt: null },
+  });
+  if (result.count !== 1) return false;
+
+  // Emails go out after the response so the page does not wait on the mail server.
+  const tutorName = before.claimedBy.name;
+  after(async () => {
+    try {
+      const notice = tutorReleasedEmail(before, tutorName);
+      await sendEmail({
+        to: before.studentEmail,
+        subject: notice.subject,
+        html: notice.html,
+        replyTo: process.env.REPORT_EMAIL || undefined,
+      });
+    } catch (err) {
+      console.error("Student notice after reopen failed:", err);
+    }
+    try {
+      await sendRequestBlast(requestId, { reopened: true });
+    } catch (err) {
+      console.error("Blast after reopen crashed:", err);
+    }
+  });
+  return true;
+}
 
 /**
  * The single place a request is claimed, used by both the emailed claim link

@@ -23,6 +23,11 @@ export const STUDENT_EMAIL_DOMAIN = "saschina.org";
 export const MIN_MEETING_MINUTES = 15;
 export const MAX_MEETING_MINUTES = 180;
 
+/** Abuse limits for the public request form. */
+export const MAX_ACTIVE_REQUESTS_PER_STUDENT = 3;
+export const MAX_REQUESTS_PER_STUDENT_PER_DAY = 5;
+export const MAX_REQUESTS_PER_HOUR = 30;
+
 /** Students can book at most this many days ahead. */
 export const MAX_DAYS_AHEAD = 60;
 

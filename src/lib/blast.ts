@@ -10,7 +10,10 @@ import { adminAlertEmail, requestBlastEmail } from "@/emails/templates";
  * could not be sent keep `emailedAt` null (visible in the admin dashboard) and
  * the officer inbox is alerted.
  */
-export async function sendRequestBlast(requestId: string): Promise<{ sent: number; total: number }> {
+export async function sendRequestBlast(
+  requestId: string,
+  options: { reopened?: boolean } = {},
+): Promise<{ sent: number; total: number }> {
   const request = await prisma.tutoringRequest.findUniqueOrThrow({ where: { id: requestId } });
   const members = await prisma.member.findMany({ where: { active: true } });
   if (members.length === 0) {
@@ -34,7 +37,11 @@ export async function sendRequestBlast(requestId: string): Promise<{ sent: numbe
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const emails: OutboundEmail[] = tokens.map((claimToken) => {
     const member = members.find((m) => m.id === claimToken.memberId)!;
-    const { subject, html } = requestBlastEmail(request, `${appUrl}/claim/${claimToken.token}`);
+    const { subject, html } = requestBlastEmail(
+      request,
+      `${appUrl}/claim/${claimToken.token}`,
+      options.reopened,
+    );
     return { to: member.email, subject, html };
   });
 

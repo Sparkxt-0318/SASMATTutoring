@@ -21,13 +21,22 @@ export default async function AdminLeaderboardPage() {
             Credited tutoring hours per member, measured against the {MEMBER_HOURS_GOAL}-hour goal.
           </p>
         </div>
-        <a
-          href="/api/admin/export"
-          className="rounded-full bg-surface px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-hairline/60"
-          download
-        >
-          Export CSV
-        </a>
+        <div className="flex gap-2">
+          <a
+            href="/api/admin/export"
+            className="rounded-full bg-surface px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-hairline/60"
+            download
+          >
+            Export hours
+          </a>
+          <a
+            href="/api/admin/export/sessions"
+            className="rounded-full bg-surface px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-hairline/60"
+            download
+          >
+            Export all sessions
+          </a>
+        </div>
       </div>
 
       <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">

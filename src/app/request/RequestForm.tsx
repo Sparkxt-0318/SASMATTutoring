@@ -159,6 +159,10 @@ export function RequestForm({ minDate }: { minDate: string }) {
         </div>
       </div>
 
+      {state.errors.form && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{state.errors.form}</p>
+      )}
+
       <SubmitButton />
     </form>
   );

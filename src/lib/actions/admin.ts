@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { checkAdminPassword, createAdminSession, destroyAdminSession, requireAdmin } from "@/lib/auth";
 import { sendRequestBlast } from "@/lib/blast";
+import { reopenClaimedRequest } from "@/lib/claiming";
 import { sendEmail } from "@/lib/email";
 import { studentIntroEmail, tutorConfirmationEmail } from "@/emails/templates";
 
@@ -32,6 +33,14 @@ export async function cancelRequest(requestId: string): Promise<void> {
     where: { id: requestId, status: { in: ["OPEN", "CLAIMED"] } },
     data: { status: "CANCELLED" },
   });
+  revalidatePath("/admin/requests");
+  revalidatePath("/admin/hours");
+}
+
+/** Put a claimed session back in the pool (e.g. the tutor stopped responding). */
+export async function reopenRequest(requestId: string): Promise<void> {
+  await requireAdmin();
+  await reopenClaimedRequest(requestId);
   revalidatePath("/admin/requests");
   revalidatePath("/admin/hours");
 }

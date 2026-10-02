@@ -1,9 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendRequestBlast } from "@/lib/blast";
-import { shanghaiDateTime } from "@/lib/constants";
+import {
+  MAX_ACTIVE_REQUESTS_PER_STUDENT,
+  MAX_REQUESTS_PER_HOUR,
+  MAX_REQUESTS_PER_STUDENT_PER_DAY,
+  shanghaiDateTime,
+} from "@/lib/constants";
 import { requestSchema } from "@/lib/validation";
 
 export interface RequestFormState {
@@ -60,6 +66,48 @@ export async function createRequest(
     redirect("/request/success");
   }
 
+  // Abuse limits. Anyone can type any school address, so cap how many requests
+  // one address can have, and how many arrive overall, before members get emailed.
+  const now = Date.now();
+  const [activeForStudent, dayForStudent, hourOverall] = await Promise.all([
+    prisma.tutoringRequest.count({
+      where: {
+        studentEmail: rest.studentEmail,
+        status: { in: ["OPEN", "CLAIMED"] },
+        meetingEnd: { gt: new Date(now) },
+      },
+    }),
+    prisma.tutoringRequest.count({
+      where: {
+        studentEmail: rest.studentEmail,
+        createdAt: { gte: new Date(now - 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.tutoringRequest.count({
+      where: { createdAt: { gte: new Date(now - 60 * 60 * 1000) } },
+    }),
+  ]);
+  if (activeForStudent >= MAX_ACTIVE_REQUESTS_PER_STUDENT) {
+    return {
+      errors: {
+        form: `You already have ${MAX_ACTIVE_REQUESTS_PER_STUDENT} requests waiting. Please wait for a tutor to reach out, or ask an officer for help.`,
+      },
+      values: raw,
+    };
+  }
+  if (dayForStudent >= MAX_REQUESTS_PER_STUDENT_PER_DAY) {
+    return {
+      errors: { form: "You have sent several requests today already. Please try again tomorrow." },
+      values: raw,
+    };
+  }
+  if (hourOverall >= MAX_REQUESTS_PER_HOUR) {
+    return {
+      errors: { form: "We are getting a lot of requests right now. Please try again in a little while." },
+      values: raw,
+    };
+  }
+
   const request = await prisma.tutoringRequest.create({
     data: {
       ...rest,
@@ -68,7 +116,18 @@ export async function createRequest(
       receivedTeacherHelp: receivedTeacherHelp === "Yes",
     },
   });
-  await sendRequestBlast(request.id);
+
+  // Email the members after the student has their confirmation page. Sending
+  // 30 emails can take a while, and the student should not wait for it (or see
+  // an error) if the mail server is slow. Members whose email fails stay
+  // flagged in the admin Requests tab.
+  after(async () => {
+    try {
+      await sendRequestBlast(request.id);
+    } catch (err) {
+      console.error("Request blast crashed:", err);
+    }
+  });
 
   redirect("/request/success");
 }

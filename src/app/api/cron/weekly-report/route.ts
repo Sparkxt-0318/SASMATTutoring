@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron";
 import { getDigestData } from "@/lib/stats";
 import { sendEmail } from "@/lib/email";
 import { weeklyDigestEmail } from "@/emails/templates";
@@ -7,8 +8,7 @@ import { weeklyDigestEmail } from "@/emails/templates";
  * (09:00 in Shanghai). Sends ONLY to REPORT_EMAIL.
  */
 export async function GET(request: Request): Promise<Response> {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

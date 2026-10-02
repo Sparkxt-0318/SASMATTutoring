@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cronAuthorized } from "@/lib/cron";
 import { sendAdminAlert } from "@/lib/email";
 import { adminAlertEmail } from "@/emails/templates";
 import { formatMeeting } from "@/lib/constants";
@@ -9,8 +10,7 @@ import { formatMeeting } from "@/lib/constants";
  * the officer inbox so they can follow up with those students.
  */
 export async function GET(request: Request): Promise<Response> {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

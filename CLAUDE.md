@@ -36,6 +36,11 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
   re-checked against the database on every request. Every member server action
   must call `requireMember()`. Claiming (email link and dashboard) goes through
   `claimForMember` in `src/lib/claiming.ts`.
+- Slow work (member email blasts, reopen notices) runs inside `after()` from
+  `next/server` so users never wait on the mail server. Cron routes must use
+  `cronAuthorized()` (`src/lib/cron.ts`), never compare to the raw env var.
+  CSV exports must go through `src/lib/csv.ts` (defuses spreadsheet formulas).
+  The public request form is rate limited in `src/lib/actions/requests.ts`.
 - Meeting times are entered in Shanghai time (fixed +08:00) and stored as UTC;
   helpers live in `src/lib/constants.ts`. `receivedTeacherHelp` is survey data
   for officers only; never show it to tutors or put it in emails.

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { StatusBadge } from "@/components/StatusBadge";
-import { cancelRequest, resendBlast, reassignRequest } from "@/lib/actions/admin";
+import { cancelRequest, reopenRequest, resendBlast, reassignRequest } from "@/lib/actions/admin";
 import { formatDate, formatMeeting } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Requests" };
@@ -152,11 +152,18 @@ export default async function AdminRequestsPage() {
                         </div>
                       )}
                       {request.status === "CLAIMED" && (
-                        <form action={cancelRequest.bind(null, request.id)}>
-                          <button type="submit" className="text-red-600 hover:underline">
-                            Cancel
-                          </button>
-                        </form>
+                        <div className="flex flex-col items-start gap-2">
+                          <form action={reopenRequest.bind(null, request.id)}>
+                            <button type="submit" className="text-accent hover:underline">
+                              Reopen
+                            </button>
+                          </form>
+                          <form action={cancelRequest.bind(null, request.id)}>
+                            <button type="submit" className="text-red-600 hover:underline">
+                              Cancel
+                            </button>
+                          </form>
+                        </div>
                       )}
                     </td>
                   </tr>

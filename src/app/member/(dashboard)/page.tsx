@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { requireMember } from "@/lib/member-auth";
-import { claimRequestAsMember } from "@/lib/actions/member";
+import { claimRequestAsMember, releaseMyClaim } from "@/lib/actions/member";
 import { getMemberMinutes } from "@/lib/stats";
 import { ProgressGrid } from "@/components/ProgressGrid";
 import { Button } from "@/components/Button";
@@ -39,6 +39,14 @@ const NOTICES: Record<string, { text: string; className: string }> = {
   claimed: {
     text: "It's yours! The student's contact details are under My sessions, and we emailed you both an intro.",
     className: "bg-green-50 text-green-700",
+  },
+  released: {
+    text: "Done. The session went back to the other members and the student has been told.",
+    className: "bg-green-50 text-green-700",
+  },
+  "cannot-release": {
+    text: "That session can't be given back any more, because it has already started or isn't yours.",
+    className: "bg-amber-50 text-amber-700",
   },
   taken: {
     text: "Someone else claimed that one first. Another request will come along soon.",
@@ -160,6 +168,27 @@ export default async function MemberDashboardPage({
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
                   {session.topic}
                 </p>
+                {!session.ended && (
+                  <details className="mt-4 text-sm">
+                    <summary className="cursor-pointer text-muted hover:text-foreground">
+                      Can&rsquo;t make it anymore?
+                    </summary>
+                    <form
+                      action={releaseMyClaim.bind(null, session.id)}
+                      className="mt-3 flex flex-wrap items-center gap-3"
+                    >
+                      <p className="text-muted">
+                        This gives the session back to all members and lets the student know.
+                      </p>
+                      <button
+                        type="submit"
+                        className="rounded-full bg-surface px-4 py-1.5 font-medium text-red-600 transition-colors hover:bg-hairline/60"
+                      >
+                        Yes, give it back
+                      </button>
+                    </form>
+                  </details>
+                )}
               </div>
             ))}
             {credited.map((session) => (
