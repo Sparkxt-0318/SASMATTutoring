@@ -105,13 +105,16 @@ export default function LandingPage() {
               <div className="rounded-2xl bg-white p-8 shadow-sm">
                 <h3 className="text-xl font-semibold tracking-tight">Are you a member?</h3>
                 <p className="mt-3 leading-relaxed text-muted">
-                  Sign in to see your hours and progress, claim open requests, and find the
-                  details of every session you tutor. You also still get an email with a Claim
-                  button whenever a student asks for help. The first member to confirm becomes the
-                  tutor.
+                  Create your own account to see your hours and progress, claim open requests,
+                  and find the details of every session you tutor. You also get an email with a
+                  Claim button whenever a student asks for help. The first member to confirm
+                  becomes the tutor.
                 </p>
-                <div className="mt-6">
-                  <ButtonLink href="/member/login">Member login</ButtonLink>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <ButtonLink href="/member/signup">Create account</ButtonLink>
+                  <ButtonLink href="/member/login" variant="secondary">
+                    Sign in
+                  </ButtonLink>
                 </div>
               </div>
               <div className="rounded-2xl bg-white p-8 shadow-sm">

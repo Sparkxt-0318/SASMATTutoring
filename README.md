@@ -60,19 +60,30 @@ button (a POST).
 | --- | --- | --- |
 | `/` | Students | Landing page |
 | `/request` | Students | Request form: `@saschina.org` email, grade, course, topic, teacher-help survey question, meeting date + start/end time |
-| `/member/login` | Members | Sign in with roster email + password. Dashboard: own progress grid, open requests to claim, my sessions with student contact |
+| `/member/signup` | Members | Create your own account (name, email, password) |
+| `/member/login` | Members | Sign in. Dashboard: own progress grid, open requests to claim, my sessions with student contact |
 | `/claim/<token>` | Members | Personal claim link from the blast email (no sign in needed; also shows the member's progress grid) |
 | `/admin` | Officers | Requests · Hours (weekend credit review) · Members roster · Leaderboard (progress grids) + CSV |
 
 Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
-**Member logins:** members sign in at `/member/login` with the email on the roster and
-a password. Officers issue each member a temporary password in the admin Members tab
-("Set up login" or "Reset password", shown once on screen). The member must replace it
-with their own on first sign in. A forgotten password is fixed the same way. Five wrong
-attempts lock that account for 15 minutes, and deactivating a member or resetting their
-password signs them out everywhere immediately. Claim links in emails keep working
-without signing in.
+**Member accounts:** members create their own account at `/member/signup` (name, email,
+password) and sign in at `/member/login`. Officers do not have to set anything up.
+Who may sign up is controlled by the `MEMBER_SIGNUP` setting in Vercel:
+
+- `open` (the default): anyone can sign up. Note that members receive every request
+  email and can see the student's contact details once they claim a request, so switch
+  to `roster` as soon as you have your member list.
+- `roster`: only emails an officer has added in the admin Members tab can sign up.
+  Add your list there first, then set `MEMBER_SIGNUP` to `roster` and redeploy.
+
+An officer-added entry without a password is simply claimed when that person signs up.
+Deactivated members can never sign themselves back in. A forgotten password is fixed by
+an officer with "Reset password" (a temporary password, shown once), which the member
+must replace on sign in. Sign-ups are capped at 60 per hour and 300 active members.
+Five wrong sign-in attempts lock that account for 15 minutes, and deactivating a member
+or resetting their password signs them out everywhere immediately. Claim links in
+emails keep working without signing in.
 
 ## Deploying (officer runbook)
 

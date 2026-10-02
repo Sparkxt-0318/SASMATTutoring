@@ -118,6 +118,26 @@ export const newPasswordSchema = z
     message: "The two passwords don't match.",
   });
 
+export const signupSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, "Please enter your full name.")
+      .max(100, "Name is too long.")
+      .regex(/^[^\u0000-\u001f\u007f]+$/, "Please use a normal name without line breaks."),
+    email: z.string().trim().toLowerCase().email("Please enter a valid email address."),
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters.")
+      .max(100, "Please keep it under 100 characters."),
+    confirm: z.string(),
+  })
+  .refine((data) => data.password === data.confirm, {
+    path: ["confirm"],
+    message: "The two passwords don't match.",
+  });
+
 export const memberSchema = z.object({
   name: z.string().trim().min(2, "Please enter a name.").max(100),
   email: z.string().trim().toLowerCase().email("Please enter a valid email."),

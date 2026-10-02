@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { setMemberActive } from "@/lib/actions/members";
 import { AddMemberForm } from "./AddMemberForm";
 import { ResetPasswordButton } from "./ResetPasswordButton";
-import { formatDate } from "@/lib/constants";
+import { formatDate, signupMode } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Members" };
 
@@ -25,8 +25,18 @@ export default async function AdminMembersPage() {
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">Members</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Everyone on this roster gets an email when a tutoring request arrives, and can sign in at
-        /member/login once you give them a temporary password. They choose their own the first time.
+        Everyone here gets an email when a tutoring request arrives. Members create their own
+        account at /member/signup, so you do not need to add anyone. Adding someone below is
+        optional: it pre-registers their email and gives you a temporary password to hand over.
+      </p>
+      <p
+        className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-medium ${
+          signupMode() === "open" ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"
+        }`}
+      >
+        {signupMode() === "open"
+          ? "Sign-up is open: anyone can join. To allow only emails on your list, set MEMBER_SIGNUP to roster in Vercel."
+          : "Sign-up is roster only: only emails added below can create an account."}
       </p>
 
       <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">

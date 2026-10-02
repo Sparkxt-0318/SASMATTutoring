@@ -32,7 +32,8 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
 - Two separate logins: officers use the shared `ADMIN_PASSWORD` (`src/lib/auth.ts`),
   members use roster email + their own password (`src/lib/member-auth.ts`,
   `src/lib/password.ts`, scrypt, no extra dependency). Officers issue temporary
-  passwords; members must change them on first sign in. Member sessions are
+  passwords for resets; members create their own accounts at `/member/signup`
+  (`memberSignup`, mode set by `MEMBER_SIGNUP` open|roster via `signupMode()`). Member sessions are
   re-checked against the database on every request. Every member server action
   must call `requireMember()`. Claiming (email link and dashboard) goes through
   `claimForMember` in `src/lib/claiming.ts`.

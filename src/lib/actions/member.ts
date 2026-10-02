@@ -10,7 +10,9 @@ import {
   requireMember,
 } from "@/lib/member-auth";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "@/lib/password";
-import { loginSchema, newPasswordSchema } from "@/lib/validation";
+import { Prisma } from "@/generated/prisma/client";
+import { MAX_ACTIVE_MEMBERS, MAX_SIGNUPS_PER_HOUR, signupMode } from "@/lib/constants";
+import { loginSchema, newPasswordSchema, signupSchema } from "@/lib/validation";
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
@@ -60,6 +62,93 @@ export async function memberLogin(
   });
   await createMemberSession(member);
   redirect(member.mustChangePassword ? "/member/password" : "/member");
+}
+
+export interface SignupState {
+  errors?: Record<string, string>;
+  values?: Record<string, string>;
+}
+
+/**
+ * Members create their own account. In "open" mode anyone can; in "roster"
+ * mode only emails an officer already added. An officer-added entry that has no
+ * password yet is simply claimed (no duplicate is created). Deactivated members
+ * can never sign themselves back in.
+ */
+export async function memberSignup(_prev: SignupState, formData: FormData): Promise<SignupState> {
+  // Bot trap: real people never see or fill this field.
+  if (formData.get("website")) redirect("/member/login");
+
+  const raw = {
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+    confirm: String(formData.get("confirm") ?? ""),
+  };
+  // Never send passwords back to the browser.
+  const values = { name: raw.name, email: raw.email };
+
+  const parsed = signupSchema.safeParse(raw);
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] ?? "form");
+      if (!errors[field]) errors[field] = issue.message;
+    }
+    return { errors, values };
+  }
+  const { name, email, password } = parsed.data;
+
+  const [lastHour, activeMembers] = await Promise.all([
+    prisma.member.count({ where: { createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } } }),
+    prisma.member.count({ where: { active: true } }),
+  ]);
+  if (lastHour >= MAX_SIGNUPS_PER_HOUR || activeMembers >= MAX_ACTIVE_MEMBERS) {
+    return {
+      errors: { form: "Sign-ups are paused right now. Please try again later or ask an officer." },
+      values,
+    };
+  }
+
+  const existing = await prisma.member.findUnique({ where: { email } });
+  if (existing && !existing.active) {
+    return {
+      errors: { form: "This account was deactivated. Please ask an officer." },
+      values,
+    };
+  }
+  if (existing?.passwordHash) {
+    return {
+      errors: { email: "That email already has an account. Sign in instead, or ask an officer to reset your password." },
+      values,
+    };
+  }
+  if (!existing && signupMode() === "roster") {
+    return {
+      errors: { email: "That email isn't on the club member list yet. Ask an officer to add it." },
+      values,
+    };
+  }
+
+  const passwordHash = await hashPassword(password);
+  let member;
+  try {
+    member = existing
+      ? await prisma.member.update({
+          where: { id: existing.id },
+          data: { passwordHash, mustChangePassword: false, failedLogins: 0, lockedUntil: null },
+        })
+      : await prisma.member.create({ data: { name, email, passwordHash } });
+  } catch (err) {
+    // Two sign-ups for the same email at the same instant: the loser lands here.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return { errors: { email: "That email already has an account. Sign in instead." }, values };
+    }
+    throw err;
+  }
+
+  await createMemberSession(member);
+  redirect("/member");
 }
 
 export async function memberLogout(): Promise<void> {
