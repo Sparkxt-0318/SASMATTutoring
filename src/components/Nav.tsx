@@ -8,12 +8,20 @@ export function Nav() {
         <Link href="/" className="text-[15px] font-semibold tracking-tight text-foreground">
           MAT <span className="font-normal text-muted">Tutoring</span>
         </Link>
-        <Link
-          href="/request"
-          className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-        >
-          Request a tutor
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/admin"
+            className="text-sm text-muted transition-colors hover:text-foreground"
+          >
+            Officer login
+          </Link>
+          <Link
+            href="/request"
+            className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          >
+            Request a tutor
+          </Link>
+        </div>
       </nav>
     </header>
   );

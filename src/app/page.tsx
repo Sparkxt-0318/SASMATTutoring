@@ -94,6 +94,37 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Members and officers */}
+        <section className="bg-surface px-6 py-24">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
+              For {CLUB_NAME} members and officers.
+            </h2>
+            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-8 shadow-sm">
+                <h3 className="text-xl font-semibold tracking-tight">Are you a member?</h3>
+                <p className="mt-3 leading-relaxed text-muted">
+                  There is no account to make and nothing to log in to. When a student asks for a
+                  tutor, you get an email with your own Claim button. The first member to confirm
+                  becomes the tutor. Opening that same link later also shows your hours progress.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white p-8 shadow-sm">
+                <h3 className="text-xl font-semibold tracking-tight">Are you an officer?</h3>
+                <p className="mt-3 leading-relaxed text-muted">
+                  Sign in to manage the member roster, see every request, record the weekend
+                  credit, and track everyone&rsquo;s progress.
+                </p>
+                <div className="mt-6">
+                  <ButtonLink href="/admin" variant="secondary">
+                    Officer login
+                  </ButtonLink>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
       <Footer />
     </>
