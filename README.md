@@ -4,10 +4,13 @@ Peer math tutoring platform for **Mu Alpha Theta** (MAT), SAS's math honor socie
 
 **How it works:** a student requests help through the public form → every active MAT
 member gets an email with a personal one-click **Claim** link → the first member to
-confirm becomes the tutor (student and tutor are introduced by email) → after the
-session the tutor logs the duration → an officer approves it → hours accumulate as
-service credit. A weekly digest with the all-time combined total and per-member
-hours goes to the officer report inbox every Monday morning.
+confirm becomes the tutor (student and tutor are introduced by email). Students
+choose the exact date and start/end time of the session when they request it.
+**Credit is never automatic:** officers go through the finished sessions once a
+week (the Hours tab), and record the minutes each tutor earned. Each member's
+progress toward the hours goal is shown as a contribution-style grid (green =
+done, blank = still to fill). A weekly digest with the all-time combined total
+and per-member hours goes to the officer report inbox every Monday morning.
 
 ## Stack
 
@@ -54,10 +57,9 @@ button (a POST).
 | Route | Who | Purpose |
 | --- | --- | --- |
 | `/` | Students | Landing page |
-| `/request` | Students | Request form (requires an `@saschina.org` email) |
-| `/claim/<token>` | Members | Personal claim link from the blast email |
-| `/complete/<token>` | Tutor | Log the session duration after tutoring |
-| `/admin` | Officers | Requests · Hours approval · Members roster · Leaderboard + CSV |
+| `/request` | Students | Request form: `@saschina.org` email, grade, course, topic, teacher-help survey question, meeting date + start/end time |
+| `/claim/<token>` | Members | Personal claim link from the blast email (also shows the member's own progress grid) |
+| `/admin` | Officers | Requests · Hours (weekend credit review) · Members roster · Leaderboard (progress grids) + CSV |
 
 Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
@@ -72,16 +74,19 @@ Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
    `.env.example` in Project Settings → Environment Variables. Set `APP_URL` to the
    production URL, `EMAIL_DRY_RUN` empty/false, and leave `TEST_EMAIL_OVERRIDE`
    set to your own email for the first smoke test — remove it when everything checks out.
-4. Run the first migration against Neon: `npm run db:deploy` locally with the Neon
-   URLs in `.env`.
+4. Database tables are created automatically: Vercel runs the `vercel-build` script
+   (`prisma generate && prisma migrate deploy && next build`), which applies any
+   pending migrations to Neon on every deploy. This needs `DIRECT_URL` (the
+   non-pooled Neon string) set in Vercel. You can also run `npm run db:deploy`
+   by hand with the Neon URLs in `.env`.
 5. Add the real member roster in `/admin` → Members. Never commit real emails to
    the seed file.
 
 **Cron jobs** (already configured in `vercel.json`, times are UTC):
 
 - `/api/cron/weekly-report` — Mondays 01:00 UTC (09:00 Shanghai): hours digest to `REPORT_EMAIL`
-- `/api/cron/daily` — 22:30 UTC (06:30 Shanghai): expires requests unclaimed for 14 days,
-  reminds tutors who haven't logged a session after 7 days
+- `/api/cron/daily` — 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
+  meeting time has already started, and tells the report inbox so you can follow up
 
 Both routes require the `Authorization: Bearer <CRON_SECRET>` header (Vercel sends
 it automatically when `CRON_SECRET` is set).
@@ -92,7 +97,11 @@ If the club outgrows that, upgrade Resend or trim the roster blast.
 
 ## Records
 
-- Approved hours per member (and the combined all-time total) live on
-  `/admin/leaderboard`, with CSV export for officer reports.
-- Every credit approval is auditable in `/admin/hours` history; rejected logs are
-  kept, not deleted.
+- Credited hours per member (and the combined all-time total) live on
+  `/admin/leaderboard`, with CSV export for officer reports. The goal each
+  member's grid fills toward is `MEMBER_HOURS_GOAL` (default 20 hours; one square
+  = 15 minutes). Change it in the Vercel environment variables.
+- Every credit is listed under "Credited" in `/admin/hours`, with an Undo button
+  that puts the session back in the review queue.
+- The "did your teacher help first?" survey answer is visible to officers only
+  (Requests tab) — it is never shown to tutors or included in any email.

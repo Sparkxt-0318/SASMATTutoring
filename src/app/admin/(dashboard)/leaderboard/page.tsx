@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { getCombinedTotal, getLeaderboard } from "@/lib/stats";
-import { prisma } from "@/lib/db";
-import { minutesToHours, formatMinutes } from "@/lib/constants";
+import { ProgressGrid } from "@/components/ProgressGrid";
+import { countAwaitingCredit, getCombinedTotal, getLeaderboard } from "@/lib/stats";
+import { MEMBER_HOURS_GOAL, minutesToHours } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Leaderboard" };
 
 export default async function AdminLeaderboardPage() {
-  const [leaderboard, combined, pendingCount] = await Promise.all([
+  const [leaderboard, combined, awaitingCredit] = await Promise.all([
     getLeaderboard(),
     getCombinedTotal(),
-    prisma.creditLog.count({ where: { status: "PENDING" } }),
+    countAwaitingCredit(),
   ]);
 
   return (
@@ -17,7 +17,9 @@ export default async function AdminLeaderboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Leaderboard</h1>
-          <p className="mt-1 text-sm text-muted">Approved tutoring hours per member.</p>
+          <p className="mt-1 text-sm text-muted">
+            Credited tutoring hours per member, measured against the {MEMBER_HOURS_GOAL}-hour goal.
+          </p>
         </div>
         <a
           href="/api/admin/export"
@@ -37,8 +39,8 @@ export default async function AdminLeaderboardPage() {
           <span className="ml-2 text-2xl font-medium text-muted">hours</span>
         </p>
         <p className="mt-2 text-sm text-muted">
-          {combined.sessions} approved session{combined.sessions === 1 ? "" : "s"}
-          {pendingCount > 0 && ` · ${pendingCount} pending review`}
+          {combined.sessions} credited session{combined.sessions === 1 ? "" : "s"}
+          {awaitingCredit > 0 && ` · ${awaitingCredit} waiting for credit`}
         </p>
       </div>
 
@@ -47,35 +49,22 @@ export default async function AdminLeaderboardPage() {
           <p className="text-muted">No members yet.</p>
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-hairline/60 text-xs uppercase tracking-wide text-muted">
-                <th className="px-5 py-3.5 font-semibold">#</th>
-                <th className="px-5 py-3.5 font-semibold">Member</th>
-                <th className="px-5 py-3.5 text-right font-semibold">Hours</th>
-                <th className="px-5 py-3.5 text-right font-semibold">Sessions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((member, i) => (
-                <tr key={member.memberId} className="border-b border-hairline/40 last:border-0">
-                  <td className="px-5 py-3.5 text-muted">{i + 1}</td>
-                  <td className="px-5 py-3.5 font-medium">
-                    {member.name}
-                    {!member.active && <span className="ml-1.5 text-xs text-faint">(former)</span>}
-                  </td>
-                  <td className="px-5 py-3.5 text-right font-medium">
-                    {minutesToHours(member.totalMinutes)}
-                    <span className="ml-1 text-xs font-normal text-faint">
-                      ({formatMinutes(member.totalMinutes)})
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-muted">{member.sessionCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {leaderboard.map((member, i) => (
+            <div key={member.memberId} className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <p className="font-semibold tracking-tight">
+                  <span className="mr-2 text-sm font-normal text-faint">{i + 1}</span>
+                  {member.name}
+                  {!member.active && <span className="ml-1.5 text-xs font-normal text-faint">(former)</span>}
+                </p>
+                <p className="shrink-0 text-xs text-muted">
+                  {member.sessionCount} session{member.sessionCount === 1 ? "" : "s"}
+                </p>
+              </div>
+              <ProgressGrid minutes={member.totalMinutes} />
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -15,21 +15,51 @@ export const COURSES = [
 
 export const GRADES = ["9", "10", "11", "12"] as const;
 
+export const YES_NO = ["Yes", "No"] as const;
+
 export const STUDENT_EMAIL_DOMAIN = "saschina.org";
 
-/** OPEN requests older than this are auto-expired by the daily cron. */
-export const REQUEST_EXPIRY_DAYS = 14;
+/** Session length limits for a requested meeting, in minutes. */
+export const MIN_MEETING_MINUTES = 15;
+export const MAX_MEETING_MINUTES = 180;
 
-/** CLAIMED requests with no logged session after this many days trigger a reminder. */
-export const COMPLETION_REMINDER_DAYS = 7;
+/** Students can book at most this many days ahead. */
+export const MAX_DAYS_AHEAD = 60;
 
-/** Duration choices for logging a session, in minutes. */
-export const DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120] as const;
+/**
+ * Hours each member is working toward. Drives the contribution-style progress
+ * grid. Override with the MEMBER_HOURS_GOAL environment variable.
+ */
+export const MEMBER_HOURS_GOAL = Number(process.env.MEMBER_HOURS_GOAL) || 20;
+
+/** One square in the progress grid represents this many minutes of tutoring. */
+export const PROGRESS_CELL_MINUTES = 15;
 
 export const CLUB_NAME = "Mu Alpha Theta";
 export const SCHOOL_NAME = "Shanghai American School";
 
 export const TIMEZONE = "Asia/Shanghai";
+
+// Shanghai has no daylight saving, so a fixed +08:00 offset is always correct.
+const SHANGHAI_OFFSET = "+08:00";
+
+/** Today's date in Shanghai as YYYY-MM-DD (suitable for <input type="date" min>). */
+export function shanghaiToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date());
+}
+
+/** Combine a Shanghai-local date ("2026-10-09") and time ("12:30") into a Date. */
+export function shanghaiDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00${SHANGHAI_OFFSET}`);
+}
+
+export function isPast(date: Date): boolean {
+  return date.getTime() <= Date.now();
+}
+
+export function meetingMinutes(start: Date, end: Date): number {
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
 
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -40,6 +70,22 @@ export function formatDate(date: Date): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+/** e.g. "Fri, Oct 9 · 12:30 PM – 1:15 PM" (Shanghai time). */
+export function formatMeeting(start: Date, end: Date): string {
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(start);
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} · ${time.format(start)} – ${time.format(end)}`;
 }
 
 export function formatMinutes(minutes: number): string {

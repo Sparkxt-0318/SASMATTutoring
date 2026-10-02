@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { sendRequestBlast } from "@/lib/blast";
+import { shanghaiDateTime } from "@/lib/constants";
 import { requestSchema } from "@/lib/validation";
 
 export interface RequestFormState {
@@ -27,7 +28,10 @@ export async function createRequest(
     gradeLevel: String(formData.get("gradeLevel") ?? ""),
     subject: String(formData.get("subject") ?? ""),
     topic: String(formData.get("topic") ?? ""),
-    availability: String(formData.get("availability") ?? ""),
+    receivedTeacherHelp: String(formData.get("receivedTeacherHelp") ?? ""),
+    meetingDate: String(formData.get("meetingDate") ?? ""),
+    startTime: String(formData.get("startTime") ?? ""),
+    endTime: String(formData.get("endTime") ?? ""),
   };
 
   const parsed = requestSchema.safeParse(raw);
@@ -40,12 +44,14 @@ export async function createRequest(
     return { errors, values: raw };
   }
 
+  const { meetingDate, startTime, endTime, receivedTeacherHelp, ...rest } = parsed.data;
+
   // Duplicate guard: same student + course submitted moments ago → treat as
   // the same request instead of blasting members twice.
   const recentDuplicate = await prisma.tutoringRequest.findFirst({
     where: {
-      studentEmail: parsed.data.studentEmail,
-      subject: parsed.data.subject,
+      studentEmail: rest.studentEmail,
+      subject: rest.subject,
       status: { in: ["OPEN", "CLAIMED"] },
       createdAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000) },
     },
@@ -54,7 +60,14 @@ export async function createRequest(
     redirect("/request/success");
   }
 
-  const request = await prisma.tutoringRequest.create({ data: parsed.data });
+  const request = await prisma.tutoringRequest.create({
+    data: {
+      ...rest,
+      meetingStart: shanghaiDateTime(meetingDate, startTime),
+      meetingEnd: shanghaiDateTime(meetingDate, endTime),
+      receivedTeacherHelp: receivedTeacherHelp === "Yes",
+    },
+  });
   await sendRequestBlast(request.id);
 
   redirect("/request/success");

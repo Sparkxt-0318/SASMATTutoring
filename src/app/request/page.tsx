@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { shanghaiToday } from "@/lib/constants";
 import { RequestForm } from "./RequestForm";
 
 export const metadata: Metadata = {
   title: "Request a tutor",
 };
+
+// Rendered per request so the earliest selectable date is always "today".
+export const dynamic = "force-dynamic";
 
 export default function RequestPage() {
   return (
@@ -21,7 +25,7 @@ export default function RequestPage() {
             </p>
           </div>
           <div className="rise-in rise-in-delay-1 mt-10 rounded-2xl bg-white p-6 shadow-sm sm:p-10">
-            <RequestForm />
+            <RequestForm minDate={shanghaiToday()} />
           </div>
         </div>
       </main>

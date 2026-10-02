@@ -21,6 +21,10 @@
   --color-hairline: var(--hairline);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  /* Progress grid: Apple system green for done squares, soft grey for the rest. */
+  --color-progress: #34c759;
+  --color-progress-partial: #a8e6b9;
+  --color-progress-empty: #e5e5ea;
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { createRequest, type RequestFormState } from "@/lib/actions/requests";
 import { Field, TextInput, TextArea, Select, SegmentedRadios } from "@/components/FormField";
 import { Button } from "@/components/Button";
-import { COURSES, GRADES, STUDENT_EMAIL_DOMAIN } from "@/lib/constants";
+import { COURSES, GRADES, STUDENT_EMAIL_DOMAIN, YES_NO } from "@/lib/constants";
 
 const initialState: RequestFormState = { errors: {}, values: {} };
 
@@ -18,7 +18,7 @@ function SubmitButton() {
   );
 }
 
-export function RequestForm() {
+export function RequestForm({ minDate }: { minDate: string }) {
   const [state, formAction] = useActionState(createRequest, initialState);
 
   return (
@@ -103,20 +103,61 @@ export function RequestForm() {
       </Field>
 
       <Field
-        label="When are you free?"
-        htmlFor="availability"
-        error={state.errors.availability}
-        hint="Days, breaks, or after school — anything that helps find a time."
+        label="Did you receive help from your teacher before asking our help?"
+        htmlFor="receivedTeacherHelp"
+        error={state.errors.receivedTeacherHelp}
+        hint="This is for surveying purposes only, it is not due to any consequences."
       >
-        <TextArea
-          id="availability"
-          name="availability"
-          rows={3}
-          placeholder="e.g. Lunch on Tuesdays and Thursdays, or after school Wednesday"
-          defaultValue={state.values.availability}
-          required
+        <SegmentedRadios
+          name="receivedTeacherHelp"
+          options={YES_NO}
+          defaultValue={state.values.receivedTeacherHelp}
         />
       </Field>
+
+      <div className="flex flex-col gap-6 rounded-2xl bg-surface p-5">
+        <div>
+          <h2 className="text-[15px] font-semibold tracking-tight">When should we meet?</h2>
+          <p className="mt-0.5 text-xs text-faint">
+            Pick the date and the exact start and end time (Shanghai time). A tutor will claim your
+            request only if they can make it.
+          </p>
+        </div>
+
+        <Field label="Date" htmlFor="meetingDate" error={state.errors.meetingDate}>
+          <TextInput
+            id="meetingDate"
+            name="meetingDate"
+            type="date"
+            min={minDate}
+            defaultValue={state.values.meetingDate}
+            required
+          />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Starts" htmlFor="startTime" error={state.errors.startTime}>
+            <TextInput
+              id="startTime"
+              name="startTime"
+              type="time"
+              step={900}
+              defaultValue={state.values.startTime}
+              required
+            />
+          </Field>
+          <Field label="Ends" htmlFor="endTime" error={state.errors.endTime}>
+            <TextInput
+              id="endTime"
+              name="endTime"
+              type="time"
+              step={900}
+              defaultValue={state.values.endTime}
+              required
+            />
+          </Field>
+        </div>
+      </div>
 
       <SubmitButton />
     </form>

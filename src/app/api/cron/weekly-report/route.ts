@@ -26,6 +26,6 @@ export async function GET(request: Request): Promise<Response> {
     ok: true,
     totalMinutesAllTime: digest.totalMinutesAllTime,
     weekMinutes: digest.weekMinutes,
-    pendingCount: digest.pendingCount,
+    awaitingCreditCount: digest.awaitingCreditCount,
   });
 }

@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cancelRequest, resendBlast, reassignRequest } from "@/lib/actions/admin";
-import { formatDate } from "@/lib/constants";
+import { formatDate, formatMeeting } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Requests" };
 
-const STALE_DAYS = 3;
+const URGENT_HOURS = 24;
 
-function isStaleRequest(request: { status: string; createdAt: Date }): boolean {
+/** Unclaimed and the meeting starts within a day (or has already started). */
+function needsTutorSoon(request: { status: string; meetingStart: Date }): boolean {
   return (
     request.status === "OPEN" &&
-    Date.now() - request.createdAt.getTime() > STALE_DAYS * 24 * 60 * 60 * 1000
+    request.meetingStart.getTime() - Date.now() < URGENT_HOURS * 60 * 60 * 1000
   );
 }
 
@@ -27,13 +28,23 @@ export default async function AdminRequestsPage() {
     prisma.member.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
+  // Survey: how many students already tried their teacher first (answered requests only).
+  const answered = requests.filter((r) => r.receivedTeacherHelp !== null);
+  const teacherFirst = answered.filter((r) => r.receivedTeacherHelp).length;
+
   return (
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">Requests</h1>
       <p className="mt-1 text-sm text-muted">
-        Every tutoring request, newest first. Open requests older than {STALE_DAYS} days are
-        flagged.
+        Every tutoring request, newest first. Unclaimed requests whose meeting starts within{" "}
+        {URGENT_HOURS} hours are flagged.
       </p>
+      {answered.length > 0 && (
+        <p className="mt-1 text-sm text-muted">
+          Survey: {teacherFirst} of {answered.length} student{answered.length === 1 ? "" : "s"} got
+          help from their teacher before asking us.
+        </p>
+      )}
 
       {requests.length === 0 ? (
         <div className="mt-10 rounded-2xl bg-white p-12 text-center shadow-sm">
@@ -41,11 +52,12 @@ export default async function AdminRequestsPage() {
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1100px] text-left text-sm">
             <thead>
               <tr className="border-b border-hairline/60 text-xs uppercase tracking-wide text-muted">
                 <th className="px-5 py-3.5 font-semibold">Student</th>
                 <th className="px-5 py-3.5 font-semibold">Course</th>
+                <th className="px-5 py-3.5 font-semibold">Meeting</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
                 <th className="px-5 py-3.5 font-semibold">Tutor</th>
                 <th className="px-5 py-3.5 font-semibold">Requested</th>
@@ -54,7 +66,7 @@ export default async function AdminRequestsPage() {
             </thead>
             <tbody>
               {requests.map((request) => {
-                const isStale = isStaleRequest(request);
+                const isUrgent = needsTutorSoon(request);
                 const blastIncomplete =
                   request.status === "OPEN" &&
                   (request.claimTokens.length === 0 ||
@@ -66,17 +78,25 @@ export default async function AdminRequestsPage() {
                       <p className="text-xs text-muted">
                         {request.studentEmail} · Grade {request.gradeLevel}
                       </p>
+                      {request.receivedTeacherHelp !== null && (
+                        <p className="mt-0.5 text-xs text-faint">
+                          Teacher helped first: {request.receivedTeacherHelp ? "Yes" : "No"}
+                        </p>
+                      )}
                       <p className="mt-1 max-w-[220px] truncate text-xs text-faint" title={request.topic}>
                         {request.topic}
                       </p>
                     </td>
                     <td className="px-5 py-4">{request.subject}</td>
+                    <td className="px-5 py-4 whitespace-nowrap text-muted">
+                      {formatMeeting(request.meetingStart, request.meetingEnd)}
+                    </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-col items-start gap-1.5">
                         <StatusBadge status={request.status} />
-                        {isStale && (
+                        {isUrgent && (
                           <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600">
-                            Stale
+                            Needs a tutor
                           </span>
                         )}
                         {blastIncomplete && (

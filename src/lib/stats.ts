@@ -10,7 +10,7 @@ export interface MemberTotals {
   sessionCount: number;
 }
 
-/** Approved hours per member (includes inactive members with history). */
+/** Credited hours per member (includes inactive members with history). */
 export async function getLeaderboard(): Promise<MemberTotals[]> {
   const members = await prisma.member.findMany({
     include: {
@@ -27,10 +27,10 @@ export async function getLeaderboard(): Promise<MemberTotals[]> {
       sessionCount: m.credits.length,
     }))
     .filter((m) => m.active || m.totalMinutes > 0)
-    .sort((a, b) => b.totalMinutes - a.totalMinutes);
+    .sort((a, b) => b.totalMinutes - a.totalMinutes || a.name.localeCompare(b.name));
 }
 
-/** Combined all-time approved minutes across every member. */
+/** Combined all-time credited minutes across every member. */
 export async function getCombinedTotal(): Promise<{ minutes: number; sessions: number }> {
   const result = await prisma.creditLog.aggregate({
     where: { status: "APPROVED" },
@@ -40,12 +40,28 @@ export async function getCombinedTotal(): Promise<{ minutes: number; sessions: n
   return { minutes: result._sum.minutes ?? 0, sessions: result._count };
 }
 
+/** One member's credited minutes (for their personal progress grid). */
+export async function getMemberMinutes(memberId: string): Promise<number> {
+  const result = await prisma.creditLog.aggregate({
+    where: { memberId, status: "APPROVED" },
+    _sum: { minutes: true },
+  });
+  return result._sum.minutes ?? 0;
+}
+
+/** Claimed sessions whose meeting time has passed but haven't been credited yet. */
+export async function countAwaitingCredit(): Promise<number> {
+  return prisma.tutoringRequest.count({
+    where: { status: "CLAIMED", meetingEnd: { lt: new Date() } },
+  });
+}
+
 /** Everything the weekly digest email needs. */
 export async function getDigestData(since: Date): Promise<DigestData> {
-  const [leaderboard, combined, pendingCount, weekCredits] = await Promise.all([
+  const [leaderboard, combined, awaitingCreditCount, weekCredits] = await Promise.all([
     getLeaderboard(),
     getCombinedTotal(),
-    prisma.creditLog.count({ where: { status: "PENDING" } }),
+    countAwaitingCredit(),
     prisma.creditLog.findMany({
       where: { status: "APPROVED", reviewedAt: { gte: since } },
       select: { memberId: true, minutes: true },
@@ -68,7 +84,7 @@ export async function getDigestData(since: Date): Promise<DigestData> {
     totalMinutesAllTime: combined.minutes,
     totalSessionsAllTime: combined.sessions,
     weekMinutes: weekCredits.reduce((sum, c) => sum + c.minutes, 0),
-    pendingCount,
+    awaitingCreditCount,
     members,
   };
 }

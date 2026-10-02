@@ -1,8 +1,12 @@
 # MAT Tutoring platform
 
 Peer tutoring app for Mu Alpha Theta at Shanghai American School. Students submit
-the public form; all active members are emailed personal claim links; first click
-wins; tutors log hours; officers approve them. See README.md for the full runbook.
+the public form (including the exact meeting date/start/end time); all active
+members are emailed personal claim links; first click wins. Credit is NEVER
+automatic: officers record it weekly in the admin Hours tab (`awardCredit` in
+`src/lib/actions/credits.ts`); tutors do not self-log. Progress is shown as a
+contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
+`MEMBER_HOURS_GOAL`). See README.md for the full runbook.
 
 ## Key facts
 
@@ -15,6 +19,12 @@ wins; tutors log hours; officers approve them. See README.md for the full runboo
 - Claiming must stay race-safe: a conditional `updateMany` guarded on
   `status: "OPEN"` (see `src/lib/actions/claims.ts`). Never claim on GET —
   email scanners prefetch links.
+- Prisma 7 does not regenerate the client after `migrate dev` — run
+  `npx prisma generate` yourself. Vercel builds with `vercel-build`, which also
+  runs `prisma migrate deploy`.
+- Meeting times are entered in Shanghai time (fixed +08:00) and stored as UTC;
+  helpers live in `src/lib/constants.ts`. `receivedTeacherHelp` is survey data
+  for officers only — never show it to tutors or put it in emails.
 - Emails: `src/lib/email.ts` honors `EMAIL_DRY_RUN` (log only) and
   `TEST_EMAIL_OVERRIDE` (reroute everything). Keep dry-run on in dev; never put
   real member emails in `prisma/seed.ts`.

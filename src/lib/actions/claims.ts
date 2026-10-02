@@ -8,7 +8,8 @@ import { adminAlertEmail, studentIntroEmail, tutorConfirmationEmail } from "@/em
 /**
  * Attempt to claim a request for the member behind this token.
  * Race-safe: a single conditional UPDATE guarded on status = OPEN means
- * exactly one concurrent claimer can win.
+ * exactly one concurrent claimer can win. A request whose meeting time has
+ * already started can no longer be claimed.
  */
 export async function claimRequest(token: string): Promise<void> {
   const claimToken = await prisma.claimToken.findUnique({
@@ -23,7 +24,7 @@ export async function claimRequest(token: string): Promise<void> {
   }
 
   const result = await prisma.tutoringRequest.updateMany({
-    where: { id: claimToken.requestId, status: "OPEN" },
+    where: { id: claimToken.requestId, status: "OPEN", meetingStart: { gt: new Date() } },
     data: {
       status: "CLAIMED",
       claimedById: claimToken.memberId,
@@ -32,17 +33,16 @@ export async function claimRequest(token: string): Promise<void> {
   });
 
   if (result.count !== 1) {
-    // Lost the race (or request was cancelled/expired) — the page re-reads
-    // state and shows who got it.
+    // Lost the race (or request was cancelled/expired/already started) — the
+    // page re-reads state and shows what happened.
     redirect(`/claim/${token}`);
   }
 
   // The claim stands even if these emails fail — the success page always
   // shows the student's contact info, so email is not the only channel.
   const { request, member } = claimToken;
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   try {
-    const tutorEmail = tutorConfirmationEmail(request, member.name, `${appUrl}/complete/${token}`);
+    const tutorEmail = tutorConfirmationEmail(request, member.name);
     const studentEmail = studentIntroEmail(request, member.name, member.email);
     await Promise.all([
       sendEmail({

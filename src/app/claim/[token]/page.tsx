@@ -3,7 +3,9 @@ import { prisma } from "@/lib/db";
 import { claimRequest } from "@/lib/actions/claims";
 import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate } from "@/lib/constants";
+import { ProgressCard } from "@/components/ProgressGrid";
+import { formatDate, formatMeeting, formatMinutes, isPast, meetingMinutes } from "@/lib/constants";
+import { getMemberMinutes } from "@/lib/stats";
 import { TokenShell, TokenCard, InvalidTokenCard } from "@/components/TokenShell";
 
 export const metadata: Metadata = {
@@ -41,10 +43,12 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     );
   }
 
+  const progress = <ProgressCard minutes={await getMemberMinutes(member.id)} />;
+
   if (request.status === "CLAIMED" || request.status === "COMPLETED") {
     const wasMe = request.claimedById === member.id;
     return (
-      <TokenShell>
+      <TokenShell footer={progress}>
         <TokenCard
           icon={wasMe ? "🎉" : "⚡️"}
           title={wasMe ? "You claimed this one" : `Claimed by ${request.claimedBy?.name ?? "another member"}`}
@@ -62,7 +66,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
 
   if (request.status === "CANCELLED" || request.status === "EXPIRED") {
     return (
-      <TokenShell>
+      <TokenShell footer={progress}>
         <TokenCard
           icon="🗓️"
           title={request.status === "CANCELLED" ? "This request was cancelled" : "This request expired"}
@@ -72,10 +76,24 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     );
   }
 
+  // Still OPEN, but the meeting time has already started.
+  if (isPast(request.meetingStart)) {
+    return (
+      <TokenShell footer={progress}>
+        <TokenCard
+          icon="⏰"
+          title="This meeting time has passed"
+          body="Nobody claimed this request before it was due to start, so it can no longer be claimed. Keep an eye out for the next one."
+        />
+      </TokenShell>
+    );
+  }
+
   const claimWithToken = claimRequest.bind(null, token);
+  const length = formatMinutes(meetingMinutes(request.meetingStart, request.meetingEnd));
 
   return (
-    <TokenShell>
+    <TokenShell footer={progress}>
       <div className="rise-in w-full max-w-md rounded-2xl bg-white p-8 shadow-sm sm:p-10">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Tutoring request</h1>
@@ -86,6 +104,11 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
         </p>
 
         <dl className="mt-6 space-y-4 rounded-xl bg-surface p-5">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Meeting time</dt>
+            <dd className="mt-0.5 font-medium">{formatMeeting(request.meetingStart, request.meetingEnd)}</dd>
+            <dd className="text-xs text-muted">{length} · Shanghai time</dd>
+          </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Course</dt>
             <dd className="mt-0.5 font-medium">{request.subject}</dd>
@@ -99,12 +122,6 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
             <dd className="mt-0.5 whitespace-pre-wrap leading-relaxed">{request.topic}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Availability
-            </dt>
-            <dd className="mt-0.5 whitespace-pre-wrap leading-relaxed">{request.availability}</dd>
-          </div>
-          <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Requested</dt>
             <dd className="mt-0.5">{formatDate(request.createdAt)}</dd>
           </div>
@@ -116,8 +133,8 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
           </Button>
         </form>
         <p className="mt-3 text-center text-xs text-faint">
-          Claiming shares the student&rsquo;s contact info with you and introduces you both by
-          email.
+          Only claim it if you can make this time. Claiming shares the student&rsquo;s contact info
+          with you and introduces you both by email.
         </p>
       </div>
     </TokenShell>

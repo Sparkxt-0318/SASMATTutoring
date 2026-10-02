@@ -7,7 +7,6 @@ import { checkAdminPassword, createAdminSession, destroyAdminSession, requireAdm
 import { sendRequestBlast } from "@/lib/blast";
 import { sendEmail } from "@/lib/email";
 import { studentIntroEmail, tutorConfirmationEmail } from "@/emails/templates";
-import { generateToken } from "@/lib/tokens";
 
 export interface LoginState {
   error?: string;
@@ -34,6 +33,7 @@ export async function cancelRequest(requestId: string): Promise<void> {
     data: { status: "CANCELLED" },
   });
   revalidatePath("/admin/requests");
+  revalidatePath("/admin/hours");
 }
 
 export async function resendBlast(requestId: string): Promise<void> {
@@ -59,17 +59,12 @@ export async function reassignRequest(requestId: string, memberId: string): Prom
     data: { status: "CLAIMED", claimedById: memberId, claimedAt: new Date() },
   });
   if (result.count !== 1) return;
+  revalidatePath("/admin/hours");
 
   const request = await prisma.tutoringRequest.findUniqueOrThrow({ where: { id: requestId } });
-  const claimToken = await prisma.claimToken.upsert({
-    where: { requestId_memberId: { requestId, memberId } },
-    update: {},
-    create: { requestId, memberId, token: generateToken() },
-  });
 
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   try {
-    const tutorEmail = tutorConfirmationEmail(request, member.name, `${appUrl}/complete/${claimToken.token}`);
+    const tutorEmail = tutorConfirmationEmail(request, member.name);
     const studentEmail = studentIntroEmail(request, member.name, member.email);
     await Promise.all([
       sendEmail({ to: member.email, subject: tutorEmail.subject, html: tutorEmail.html, replyTo: request.studentEmail }),

@@ -23,7 +23,8 @@ async function main() {
       gradeLevel: "11",
       subject: "AP Calculus BC",
       topic: "Race condition test request",
-      availability: "Anytime",
+      meetingStart: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      meetingEnd: new Date(Date.now() + 25 * 60 * 60 * 1000),
     },
   });
 
@@ -40,7 +41,7 @@ async function main() {
   const results = await Promise.all(
     members.map((member) =>
       prisma.tutoringRequest.updateMany({
-        where: { id: request.id, status: "OPEN" },
+        where: { id: request.id, status: "OPEN", meetingStart: { gt: new Date() } },
         data: { status: "CLAIMED", claimedById: member.id, claimedAt: new Date() },
       }),
     ),

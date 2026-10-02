@@ -6,7 +6,7 @@ import { COURSES, CLUB_NAME, SCHOOL_NAME } from "@/lib/constants";
 const STEPS = [
   {
     title: "Tell us what you need",
-    body: "Fill out a short form — your course, the topic you're stuck on, and when you're free.",
+    body: "Fill out a short form — your course, the topic you're stuck on, and the time you'd like to meet.",
   },
   {
     title: "A tutor claims it",
