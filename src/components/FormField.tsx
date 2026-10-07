@@ -28,8 +28,8 @@ export function Field({
   );
 }
 
-export function TextInput(props: ComponentProps<"input">) {
-  return <input className={inputStyles} {...props} />;
+export function TextInput({ className = "", ...props }: ComponentProps<"input">) {
+  return <input className={`${inputStyles} ${className}`} {...props} />;
 }
 
 export function TextArea(props: ComponentProps<"textarea">) {

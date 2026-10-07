@@ -36,6 +36,7 @@ export function emailStatus() {
     dryRun: isDryRun(),
     override: process.env.TEST_EMAIL_OVERRIDE || null,
     reportEmail: process.env.REPORT_EMAIL || null,
+    alertRecipients: alertRecipients(),
   };
 }
 
@@ -178,12 +179,30 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
   return emails.map((_, i) => i);
 }
 
-/** Best-effort alert to the officer inbox. Never throws. */
+function parseEmails(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+}
+
+/**
+ * Who receives alert emails (failures, "needs attention", expired requests):
+ * REPORT_EMAIL, plus everyone in EXTRA_ALERT_EMAILS (comma separated). The
+ * weekly report and backup files go to REPORT_EMAIL only.
+ */
+export function alertRecipients(): string[] {
+  return [
+    ...new Set([...parseEmails(process.env.REPORT_EMAIL), ...parseEmails(process.env.EXTRA_ALERT_EMAILS)]),
+  ];
+}
+
+/** Best-effort alert to every alert address, one separate email each. Never throws. */
 export async function sendAdminAlert(subject: string, html: string): Promise<void> {
-  const to = process.env.REPORT_EMAIL;
-  if (!to) return;
+  const recipients = alertRecipients();
+  if (recipients.length === 0) return;
   try {
-    await sendEmail({ to, subject, html });
+    await sendBatch(recipients.map((to) => ({ to, subject, html })));
   } catch (err) {
     console.error("Failed to send admin alert:", err);
   }

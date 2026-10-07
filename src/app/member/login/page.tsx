@@ -33,6 +33,11 @@ export default async function MemberLoginPage() {
         <div className="mt-6">
           <MemberLoginForm />
         </div>
+        <p className="mt-5 text-center text-sm">
+          <Link href="/member/code" className="text-accent hover:underline">
+            Email me a sign-in code instead
+          </Link>
+        </p>
       </div>
       <p className="mt-6 text-xs text-faint">
         Officer?{" "}

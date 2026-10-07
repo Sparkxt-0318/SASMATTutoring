@@ -85,6 +85,14 @@ Five wrong sign-in attempts lock that account for 15 minutes, and deactivating a
 or resetting their password signs them out everywhere immediately. Claim links in
 emails keep working without signing in.
 
+**Sign in with an emailed code (one-time PIN):** on the login page, "Email me a sign-in
+code instead" sends a fresh random 6-digit code. It works once, expires after 10
+minutes, and is stored only as a keyed hash. Five wrong guesses destroy it, and a member
+can request at most 3 codes per 15 minutes and 8 per day. It is a pilot: it only works
+for the emails listed in the `OTP_LOGIN_EMAILS` setting in Vercel (comma separated; empty
+means off for everyone), the person must already have an account, and it needs working
+email. Passwords keep working for everyone.
+
 ## Deploying (officer runbook)
 
 1. **Neon**: create a free project; copy the *pooled* connection string into
@@ -109,9 +117,14 @@ emails keep working without signing in.
 - `/api/cron/weekly-report`: Fridays 12:00 UTC (Friday 20:00 Shanghai): hours digest to
   `REPORT_EMAIL` with three CSV backups attached (members, every session, hours)
 - `/api/cron/daily`: 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
-  meeting time has already started, and emails `REPORT_EMAIL` only when something needs
+  meeting time has already started, and sends an alert only when something needs
   attention (a request starting within 24 hours with no tutor, or member emails that
   did not go out)
+
+**Who gets which email:** the weekly report with backup files goes to `REPORT_EMAIL`
+only. Alert emails (failures, "needs attention", expired requests) go to `REPORT_EMAIL`
+plus everyone in `EXTRA_ALERT_EMAILS` (comma separated), each as their own email. Use
+the Email tab in `/admin` to send a test to the whole alert list.
 
 Both routes require the `Authorization: Bearer <CRON_SECRET>` header (Vercel sends
 it automatically when `CRON_SECRET` is set).

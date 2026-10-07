@@ -117,6 +117,27 @@ export function tutorReleasedEmail(request: RequestInfo, tutorName: string) {
   return { subject, html };
 }
 
+/** One-time sign-in PIN for a member. */
+export function loginCodeEmail(name: string, code: string, minutes: number) {
+  const subject = "Your MAT Tutoring sign-in code";
+  const html = emailShell(
+    subject,
+    [
+      heading("Your sign-in code"),
+      paragraph(
+        `Hi ${escapeHtml(name)}, enter this code to sign in. It works once and expires in ${minutes} minutes.`,
+      ),
+      `<div style="margin:24px 0;padding:22px;background-color:#f5f5f7;border-radius:16px;text-align:center;">
+        <span style="font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:38px;font-weight:600;letter-spacing:0.28em;color:#1d1d1f;">${escapeHtml(code)}</span>
+      </div>`,
+      paragraph(
+        `<span style="font-size:13px;color:#86868b;">Never share this code. If you did not ask to sign in, you can ignore this email and nothing will happen.</span>`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
 export interface DigestMemberRow {
   name: string;
   totalMinutes: number;

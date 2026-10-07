@@ -37,6 +37,11 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
   re-checked against the database on every request. Every member server action
   must call `requireMember()`. Claiming (email link and dashboard) goes through
   `claimForMember` in `src/lib/claiming.ts`.
+- Emailed one-time PIN sign-in (`src/lib/actions/login-code.ts`, `src/lib/login-code.ts`):
+  random 6 digits via `crypto.randomInt`, stored only as an HMAC, single use, 10 minutes,
+  5 guesses, request limits. Only emails in `OTP_LOGIN_EMAILS` may use it. Alert emails go
+  to `alertRecipients()` (REPORT_EMAIL plus EXTRA_ALERT_EMAILS); never hardcode officer
+  email addresses in the repo (it is public), use the settings.
 - Slow work (member email blasts, reopen notices) runs inside `after()` from
   `next/server` so users never wait on the mail server. Cron routes must use
   `cronAuthorized()` (`src/lib/cron.ts`), never compare to the raw env var.

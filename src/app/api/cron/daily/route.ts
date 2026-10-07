@@ -41,6 +41,11 @@ export async function GET(request: Request): Promise<Response> {
     await sendAdminAlert(alert.subject, alert.html);
   }
 
+  // Tidy: sign-in codes are useless after a day, so do not keep them.
+  await prisma.loginCode.deleteMany({
+    where: { createdAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
+  });
+
   // 2. What needs a human today?
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000);

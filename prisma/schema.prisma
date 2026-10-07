@@ -38,6 +38,22 @@ model Member {
   claimTokens     ClaimToken[]
   claimedRequests TutoringRequest[] @relation("ClaimedBy")
   credits         CreditLog[]
+  loginCodes      LoginCode[]
+}
+
+/// One-time sign-in PIN emailed to a member. Only a keyed hash is stored, never the code itself.
+model LoginCode {
+  id        String    @id @default(cuid())
+  memberId  String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
 }
 
 model TutoringRequest {
