@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth";
-import { alertRecipients, isDryRun, sendBatch, sendEmail } from "@/lib/email";
+import { alertRecipients, isDryRun, reportEmail, sendBatch, sendEmail } from "@/lib/email";
 import { explainEmailError } from "@/lib/email-errors";
 import { adminAlertEmail } from "@/emails/templates";
 
@@ -24,7 +24,7 @@ function failure(err: unknown): TestEmailState {
 /** Sends one test email to the report address and reports exactly what happened. */
 export async function sendTestEmail(): Promise<TestEmailState> {
   await requireAdmin();
-  const to = process.env.REPORT_EMAIL;
+  const to = reportEmail();
   if (!to) return { ok: false, message: "REPORT_EMAIL is not set, so there is nowhere to send the test." };
 
   try {

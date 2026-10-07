@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { Resend } from "resend";
+import { parseEmailList } from "./email-list";
 
 export interface OutboundEmail {
   to: string;
@@ -35,7 +36,7 @@ export function emailStatus() {
     smtpHost: emailProvider() === "smtp" ? (process.env.SMTP_HOST ?? "(not set)") : null,
     dryRun: isDryRun(),
     override: process.env.TEST_EMAIL_OVERRIDE || null,
-    reportEmail: process.env.REPORT_EMAIL || null,
+    reportEmail: reportEmail(),
     alertRecipients: alertRecipients(),
   };
 }
@@ -179,11 +180,9 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
   return emails.map((_, i) => i);
 }
 
-function parseEmails(raw: string | undefined): string[] {
-  return (raw ?? "")
-    .split(/[,;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+/** The officer report inbox (REPORT_EMAIL), cleaned up, or null when it is not set. */
+export function reportEmail(): string | null {
+  return parseEmailList(process.env.REPORT_EMAIL)[0] ?? null;
 }
 
 /**
@@ -193,7 +192,7 @@ function parseEmails(raw: string | undefined): string[] {
  */
 export function alertRecipients(): string[] {
   return [
-    ...new Set([...parseEmails(process.env.REPORT_EMAIL), ...parseEmails(process.env.EXTRA_ALERT_EMAILS)]),
+    ...new Set([...parseEmailList(process.env.REPORT_EMAIL), ...parseEmailList(process.env.EXTRA_ALERT_EMAILS)]),
   ];
 }
 

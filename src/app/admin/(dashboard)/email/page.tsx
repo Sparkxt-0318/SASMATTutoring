@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default function AdminEmailPage() {
   const status = emailStatus();
   const otp = otpAllowedEmails();
+  const otpRawSet = Boolean(process.env.OTP_LOGIN_EMAILS?.trim());
   const usingResendTestSender =
     status.provider === "resend" && status.from.toLowerCase().includes("onboarding@resend.dev");
 
@@ -23,7 +24,14 @@ export default function AdminEmailPage() {
       "Alerts go to",
       status.alertRecipients.length > 0 ? status.alertRecipients.join(", ") : "(nobody: set REPORT_EMAIL)",
     ],
-    ["Members who can sign in", otp.length > 0 ? otp.join(", ") : "Nobody (member sign in is off)"],
+    [
+      "Members who can sign in",
+      otp.length > 0
+        ? otp.join(", ")
+        : otpRawSet
+          ? "Nobody: OTP_LOGIN_EMAILS is set but holds no valid email address. Check it for typos."
+          : "Nobody: OTP_LOGIN_EMAILS is not set on this deployment. Add it in Vercel, then redeploy.",
+    ],
     ["Dry run", status.dryRun ? "On: nothing is really sent" : "Off"],
     [
       "Test override",

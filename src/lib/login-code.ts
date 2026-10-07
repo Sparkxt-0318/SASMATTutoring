@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, randomInt, timingSafeEqual } from "crypto";
+import { parseEmailList } from "./email-list";
 
 export const CODE_TTL_MINUTES = 10;
 /** Wrong guesses allowed on one code before it is destroyed. */
@@ -36,12 +37,9 @@ export function codeMatches(memberId: string, code: string, storedHash: string):
 }
 
 /**
- * Emails allowed to sign in with a code (OTP_LOGIN_EMAILS, comma separated).
- * Empty means the feature is off for everyone.
+ * The ONLY emails that can sign in as a member (OTP_LOGIN_EMAILS, comma separated).
+ * Empty means nobody can. Decoration such as quotes is ignored.
  */
 export function otpAllowedEmails(): string[] {
-  return (process.env.OTP_LOGIN_EMAILS ?? "")
-    .split(/[,;\s]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  return parseEmailList(process.env.OTP_LOGIN_EMAILS);
 }

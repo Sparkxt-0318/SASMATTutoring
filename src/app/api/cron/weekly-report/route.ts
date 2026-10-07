@@ -1,6 +1,6 @@
 import { cronAuthorized } from "@/lib/cron";
 import { getDigestData } from "@/lib/stats";
-import { sendEmail } from "@/lib/email";
+import { reportEmail, sendEmail } from "@/lib/email";
 import { buildHoursCsv, buildMembersCsv, buildSessionsCsv } from "@/lib/exports";
 import { weeklyDigestEmail } from "@/emails/templates";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const to = process.env.REPORT_EMAIL;
+  const to = reportEmail();
   if (!to) {
     return Response.json({ ok: false, error: "REPORT_EMAIL is not set" }, { status: 500 });
   }

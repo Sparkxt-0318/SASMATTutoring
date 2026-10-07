@@ -1,7 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import { prisma } from "./db";
-import { sendAdminAlert, sendEmail } from "./email";
+import { reportEmail, sendAdminAlert, sendEmail } from "./email";
 import { sendRequestBlast } from "./blast";
 import {
   adminAlertEmail,
@@ -46,7 +46,7 @@ export async function reopenClaimedRequest(
         to: before.studentEmail,
         subject: notice.subject,
         html: notice.html,
-        replyTo: process.env.REPORT_EMAIL || undefined,
+        replyTo: reportEmail() ?? undefined,
       });
     } catch (err) {
       console.error("Student notice after reopen failed:", err);
