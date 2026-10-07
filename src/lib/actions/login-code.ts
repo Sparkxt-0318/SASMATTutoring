@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { explainEmailError } from "@/lib/email-errors";
 import { createMemberSession } from "@/lib/member-auth";
 import {
   CODE_COOLDOWN_SECONDS,
@@ -92,7 +93,14 @@ export async function requestLoginCode(_prev: CodeState, formData: FormData): Pr
   } catch (err) {
     console.error("Sign-in code email failed:", err);
     await prisma.loginCode.delete({ where: { id: row.id } });
-    return { error: "We couldn't send the email. Please try again in a moment, or ask an officer.", email };
+    // Only the plain-English explanation is shown, never the provider's raw error text.
+    const why = explainEmailError(err instanceof Error ? err.message : String(err));
+    return {
+      error: why
+        ? `We couldn't send the email. ${why}`
+        : "We couldn't send the email. Please try again in a moment, or ask an officer to check the Email tab.",
+      email,
+    };
   }
 
   redirect(`/member/login?email=${encodeURIComponent(email)}`);
