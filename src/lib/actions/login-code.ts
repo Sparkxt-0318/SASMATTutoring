@@ -20,25 +20,43 @@ import { loginCodeEmail } from "@/emails/templates";
 
 export interface CodeState {
   error?: string;
+  /** First time on this site: ask for a name, then send the code. */
+  needsName?: boolean;
+  email?: string;
 }
 
 const emailSchema = z.string().trim().toLowerCase().email();
+const nameSchema = z
+  .string()
+  .trim()
+  .min(2, "Please enter your full name.")
+  .max(100, "Name is too long.")
+  .regex(/^[^\u0000-\u001f\u007f]+$/, "Please use a normal name without line breaks.");
 const WRONG = "That code is wrong or has expired. Request a new one.";
 
-/** Step 1: email a fresh random PIN to an allowed member. */
+/**
+ * Step 1 of member sign-in: email a fresh random PIN. This is the ONLY way to
+ * sign in as a member, and only approved addresses (OTP_LOGIN_EMAILS) can use it.
+ */
 export async function requestLoginCode(_prev: CodeState, formData: FormData): Promise<CodeState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) return { error: "Please enter a valid email address." };
   const email = parsed.data;
 
   if (!otpAllowedEmails().includes(email)) {
-    return { error: "Code sign-in isn't turned on for this email yet. Please sign in with your password." };
+    return { error: "Member sign-in isn't open for this email address.", email };
   }
-  const member = await prisma.member.findUnique({ where: { email } });
+
+  let member = await prisma.member.findUnique({ where: { email } });
   if (!member) {
-    return { error: "There is no member account for this email yet. Create your account first." };
+    // First visit for an approved address: ask for a name once, then create the account.
+    const rawName = formData.get("name");
+    if (rawName === null || String(rawName).trim() === "") return { needsName: true, email };
+    const name = nameSchema.safeParse(rawName);
+    if (!name.success) return { needsName: true, email, error: name.error.issues[0]?.message };
+    member = await prisma.member.create({ data: { name: name.data, email } });
   }
-  if (!member.active) return { error: "This account was deactivated. Please ask an officer." };
+  if (!member.active) return { error: "This account was deactivated. Please ask an officer.", email };
 
   // Throttle: this is what keeps a 6-digit code safe from guessing.
   const now = Date.now();
@@ -48,10 +66,10 @@ export async function requestLoginCode(_prev: CodeState, formData: FormData): Pr
     prisma.loginCode.findFirst({ where: { memberId: member.id }, orderBy: { createdAt: "desc" } }),
   ]);
   if (latest && now - latest.createdAt.getTime() < CODE_COOLDOWN_SECONDS * 1000) {
-    return { error: "A code was just sent. Please wait a moment before asking for another." };
+    return { error: "A code was just sent. Please wait a moment before asking for another.", email };
   }
   if (recent >= MAX_CODES_PER_15_MIN || today >= MAX_CODES_PER_DAY) {
-    return { error: "Too many codes requested. Please wait a while, or sign in with your password." };
+    return { error: "Too many codes requested. Please wait a while and try again.", email };
   }
 
   // Only the newest code can ever work.
@@ -74,10 +92,10 @@ export async function requestLoginCode(_prev: CodeState, formData: FormData): Pr
   } catch (err) {
     console.error("Sign-in code email failed:", err);
     await prisma.loginCode.delete({ where: { id: row.id } });
-    return { error: "We couldn't send the email. Please sign in with your password, or ask an officer." };
+    return { error: "We couldn't send the email. Please try again in a moment, or ask an officer.", email };
   }
 
-  redirect(`/member/code?email=${encodeURIComponent(email)}`);
+  redirect(`/member/login?email=${encodeURIComponent(email)}`);
 }
 
 /** Step 2: check the PIN. Single use, five guesses, ten minutes. */
@@ -89,7 +107,7 @@ export async function verifyLoginCode(_prev: CodeState, formData: FormData): Pro
 
   if (!otpAllowedEmails().includes(email)) return { error: WRONG };
   const member = await prisma.member.findUnique({ where: { email } });
-  if (!member || !member.active || !member.passwordHash) return { error: WRONG };
+  if (!member || !member.active) return { error: WRONG };
 
   const latest = await prisma.loginCode.findFirst({
     where: { memberId: member.id, usedAt: null, expiresAt: { gt: new Date() } },
@@ -119,5 +137,5 @@ export async function verifyLoginCode(_prev: CodeState, formData: FormData): Pro
   if (burned.count !== 1) return { error: WRONG };
 
   await createMemberSession(member);
-  redirect(member.mustChangePassword ? "/member/password" : "/member");
+  redirect("/member");
 }

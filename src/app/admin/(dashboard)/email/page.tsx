@@ -23,7 +23,7 @@ export default function AdminEmailPage() {
       "Alerts go to",
       status.alertRecipients.length > 0 ? status.alertRecipients.join(", ") : "(nobody: set REPORT_EMAIL)",
     ],
-    ["Code sign-in allowed for", otp.length > 0 ? otp.join(", ") : "Nobody (turned off)"],
+    ["Members who can sign in", otp.length > 0 ? otp.join(", ") : "Nobody (member sign in is off)"],
     ["Dry run", status.dryRun ? "On: nothing is really sent" : "Off"],
     [
       "Test override",

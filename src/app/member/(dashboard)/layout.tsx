@@ -18,12 +18,6 @@ export default async function MemberLayout({ children }: { children: React.React
           </Link>
           <div className="flex items-center gap-5">
             <span className="hidden text-sm text-muted sm:inline">{member.name}</span>
-            <Link
-              href="/member/password"
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              Password
-            </Link>
             <form action={memberLogout}>
               <button
                 type="submit"

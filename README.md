@@ -60,38 +60,27 @@ button (a POST).
 | --- | --- | --- |
 | `/` | Students | Landing page |
 | `/request` | Students | Request form: `@saschina.org` email, grade, course, topic, teacher-help survey question, meeting date + start/end time |
-| `/member/signup` | Members | Create your own account (name, email, password) |
-| `/member/login` | Members | Sign in. Dashboard: own progress grid, open requests to claim, my sessions with student contact |
+| `/member/login` | Approved members | Type your email, get a one-time PIN by email, sign in. Dashboard: own progress grid, open requests to claim, my sessions with student contact |
 | `/claim/<token>` | Members | Personal claim link from the blast email (no sign in needed; also shows the member's progress grid) |
 | `/admin` | Officers | Requests · Hours (weekend credit review) · Members roster · Leaderboard (progress grids) + CSV |
 
 Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
-**Member accounts:** members create their own account at `/member/signup` (name, email,
-password) and sign in at `/member/login`. Officers do not have to set anything up.
-Who may sign up is controlled by the `MEMBER_SIGNUP` setting in Vercel:
+**Member sign in (emailed one-time PIN only):** there are no member passwords and no
+sign-up page. A member types their email, gets a fresh random 6-digit code by email, and
+enters it. The code works once, expires after 10 minutes, and is stored only as a keyed
+hash. Five wrong guesses destroy it, and a member can request at most 3 codes per 15
+minutes and 8 per day.
 
-- `open` (the default): anyone can sign up. Note that members receive every request
-  email and can see the student's contact details once they claim a request, so switch
-  to `roster` as soon as you have your member list.
-- `roster`: only emails an officer has added in the admin Members tab can sign up.
-  Add your list there first, then set `MEMBER_SIGNUP` to `roster` and redeploy.
+**Only addresses listed in the `OTP_LOGIN_EMAILS` setting in Vercel (comma separated) can
+sign in as a member.** Everyone else is refused, an empty list means nobody can, and the
+list is checked again on every request, so removing an address signs that person out
+immediately. The first time an approved address signs in, the site asks once for a name
+and creates the account. It needs working email (see the SMTP section below).
 
-An officer-added entry without a password is simply claimed when that person signs up.
-Deactivated members can never sign themselves back in. A forgotten password is fixed by
-an officer with "Reset password" (a temporary password, shown once), which the member
-must replace on sign in. Sign-ups are capped at 60 per hour and 300 active members.
-Five wrong sign-in attempts lock that account for 15 minutes, and deactivating a member
-or resetting their password signs them out everywhere immediately. Claim links in
-emails keep working without signing in.
-
-**Sign in with an emailed code (one-time PIN):** on the login page, "Email me a sign-in
-code instead" sends a fresh random 6-digit code. It works once, expires after 10
-minutes, and is stored only as a keyed hash. Five wrong guesses destroy it, and a member
-can request at most 3 codes per 15 minutes and 8 per day. It is a pilot: it only works
-for the emails listed in the `OTP_LOGIN_EMAILS` setting in Vercel (comma separated; empty
-means off for everyone), the person must already have an account, and it needs working
-email. Passwords keep working for everyone.
+Every other roster member (added in the admin Members tab) still gets the request emails
+and can claim with the personal Claim link in the email, which needs no sign in. Officers
+sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
 ## Deploying (officer runbook)
 

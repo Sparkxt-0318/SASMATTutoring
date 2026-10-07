@@ -28,19 +28,6 @@ export const MAX_ACTIVE_REQUESTS_PER_STUDENT = 3;
 export const MAX_REQUESTS_PER_STUDENT_PER_DAY = 5;
 export const MAX_REQUESTS_PER_HOUR = 30;
 
-/** Abuse limits for member sign-up (bots must not be able to mass-register). */
-export const MAX_SIGNUPS_PER_HOUR = 60;
-export const MAX_ACTIVE_MEMBERS = 300;
-
-/**
- * Who may create a member account, set with the MEMBER_SIGNUP environment variable:
- *  - "open" (default): anyone can sign up.
- *  - "roster": only emails an officer has already added in the Members tab.
- */
-export function signupMode(): "open" | "roster" {
-  return process.env.MEMBER_SIGNUP === "roster" ? "roster" : "open";
-}
-
 /**
  * Where "Check Your Credits" sends people (the club's credit spreadsheet). It
  * comes from the CREDITS_URL setting, never from the code, because the link is a

@@ -15,6 +15,7 @@ function Submit({ label, busy }: { label: string; busy: string }) {
   );
 }
 
+/** Step 1: type your email. First time only, an approved address is also asked for a name. */
 export function CodeRequestForm() {
   const [state, formAction] = useActionState(requestLoginCode, {} as CodeState);
   return (
@@ -24,15 +25,32 @@ export function CodeRequestForm() {
         name="email"
         placeholder="Email"
         autoComplete="email"
-        autoFocus
+        defaultValue={state.email}
+        key={state.email ?? "new"}
+        readOnly={state.needsName}
+        autoFocus={!state.needsName}
         required
       />
+      {state.needsName && (
+        <>
+          <p className="text-sm text-muted">First time here. What name should we use?</p>
+          <TextInput
+            name="name"
+            placeholder="Full name"
+            autoComplete="name"
+            maxLength={100}
+            autoFocus
+            required
+          />
+        </>
+      )}
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Submit label="Email me a code" busy="Sending…" />
     </form>
   );
 }
 
+/** Step 2: type the 6-digit code from the email. */
 export function CodeVerifyForm({ email }: { email: string }) {
   const [state, formAction] = useActionState(verifyLoginCode, {} as CodeState);
   return (
