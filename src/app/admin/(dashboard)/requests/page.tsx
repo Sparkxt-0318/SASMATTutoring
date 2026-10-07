@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cancelRequest, reopenRequest, resendBlast, reassignRequest } from "@/lib/actions/admin";
-import { formatDate, formatMeeting } from "@/lib/constants";
+import { CreditsCard, CreditsCardMissing } from "@/components/CreditsCard";
+import { creditsUrl, formatDate, formatMeeting } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Requests" };
 
@@ -28,12 +29,18 @@ export default async function AdminRequestsPage() {
     prisma.member.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
+  const creditsLink = creditsUrl();
+
   // Survey: how many students already tried their teacher first (answered requests only).
   const answered = requests.filter((r) => r.receivedTeacherHelp !== null);
   const teacherFirst = answered.filter((r) => r.receivedTeacherHelp).length;
 
   return (
     <div>
+      <div className="mb-8">
+        {creditsLink ? <CreditsCard href={creditsLink} /> : <CreditsCardMissing />}
+      </div>
+
       <h1 className="text-3xl font-semibold tracking-tight">Requests</h1>
       <p className="mt-1 text-sm text-muted">
         Every tutoring request, newest first. Unclaimed requests whose meeting starts within{" "}
@@ -52,16 +59,16 @@ export default async function AdminRequestsPage() {
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-hairline/60 text-xs uppercase tracking-wide text-muted">
-                <th className="px-5 py-3.5 font-semibold">Student</th>
-                <th className="px-5 py-3.5 font-semibold">Course</th>
-                <th className="px-5 py-3.5 font-semibold">Meeting</th>
-                <th className="px-5 py-3.5 font-semibold">Status</th>
-                <th className="px-5 py-3.5 font-semibold">Tutor</th>
-                <th className="px-5 py-3.5 font-semibold">Requested</th>
-                <th className="px-5 py-3.5 font-semibold">Actions</th>
+                <th className="px-4 py-3.5 font-semibold">Student</th>
+                <th className="px-4 py-3.5 font-semibold">Course</th>
+                <th className="px-4 py-3.5 font-semibold">Meeting</th>
+                <th className="px-4 py-3.5 font-semibold">Status</th>
+                <th className="px-4 py-3.5 font-semibold">Tutor</th>
+                <th className="px-4 py-3.5 font-semibold">Requested</th>
+                <th className="px-4 py-3.5 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -73,7 +80,7 @@ export default async function AdminRequestsPage() {
                     request.claimTokens.some((t) => t.emailedAt === null));
                 return (
                   <tr key={request.id} className="border-b border-hairline/40 last:border-0 align-top">
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4">
                       <p className="font-medium text-foreground">{request.studentName}</p>
                       <p className="text-xs text-muted">
                         {request.studentEmail} · Grade {request.gradeLevel}
@@ -87,11 +94,11 @@ export default async function AdminRequestsPage() {
                         {request.topic}
                       </p>
                     </td>
-                    <td className="px-5 py-4">{request.subject}</td>
-                    <td className="px-5 py-4 whitespace-nowrap text-muted">
+                    <td className="px-4 py-4">{request.subject}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-muted">
                       {formatMeeting(request.meetingStart, request.meetingEnd)}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col items-start gap-1.5">
                         <StatusBadge status={request.status} />
                         {isUrgent && (
@@ -106,11 +113,11 @@ export default async function AdminRequestsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-4">{request.claimedBy?.name ?? "None yet"}</td>
-                    <td className="px-5 py-4 whitespace-nowrap text-muted">
+                    <td className="px-4 py-4">{request.claimedBy?.name ?? "None yet"}</td>
+                    <td className="px-4 py-4 text-muted">
                       {formatDate(request.createdAt)}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4">
                       {request.status === "OPEN" && (
                         <div className="flex flex-col items-start gap-2">
                           <form action={resendBlast.bind(null, request.id)}>
@@ -124,7 +131,7 @@ export default async function AdminRequestsPage() {
                               const memberId = String(formData.get("memberId") ?? "");
                               if (memberId) await reassignRequest(request.id, memberId);
                             }}
-                            className="flex items-center gap-1.5"
+                            className="flex flex-wrap items-center gap-1.5"
                           >
                             <select
                               name="memberId"

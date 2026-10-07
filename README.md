@@ -150,5 +150,9 @@ If the club outgrows that, upgrade Resend or trim the roster blast.
   = 15 minutes). Change it in the Vercel environment variables.
 - Every credit is listed under "Credited" in `/admin/hours`, with an Undo button
   that puts the session back in the review queue.
+- **Check Your Credits:** members' dashboards and the admin Requests page show a card that
+  opens the club's credit spreadsheet in a new tab. The link comes from the `CREDITS_URL`
+  setting in Vercel, never from the code, because the repository is public and the link is a
+  private sharing link. Without it, members see no card and officers see a reminder.
 - The "did your teacher help first?" survey answer is visible to officers only
   (Requests tab); it is never shown to tutors or included in any email.

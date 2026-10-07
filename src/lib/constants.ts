@@ -41,6 +41,21 @@ export function signupMode(): "open" | "roster" {
   return process.env.MEMBER_SIGNUP === "roster" ? "roster" : "open";
 }
 
+/**
+ * Where "Check Your Credits" sends people (the club's credit spreadsheet). It
+ * comes from the CREDITS_URL setting, never from the code, because the link is a
+ * private sharing link and this repository is public. Only https links count.
+ */
+export function creditsUrl(): string | null {
+  const raw = process.env.CREDITS_URL?.trim();
+  if (!raw) return null;
+  try {
+    return new URL(raw).protocol === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Students can book at most this many days ahead. */
 export const MAX_DAYS_AHEAD = 60;
 

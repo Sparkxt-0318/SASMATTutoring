@@ -5,7 +5,8 @@ import { claimRequestAsMember, releaseMyClaim } from "@/lib/actions/member";
 import { getMemberMinutes } from "@/lib/stats";
 import { ProgressGrid } from "@/components/ProgressGrid";
 import { Button } from "@/components/Button";
-import { formatMeeting, formatMinutes, isPast, meetingMinutes } from "@/lib/constants";
+import { CreditsCard } from "@/components/CreditsCard";
+import { creditsUrl, formatMeeting, formatMinutes, isPast, meetingMinutes } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "My dashboard" };
 
@@ -63,6 +64,7 @@ export default async function MemberDashboardPage({
   const { notice } = await searchParams;
   const { minutes, creditedCount, openRequests, active, credited } = await loadDashboard(member.id);
   const banner = notice ? NOTICES[notice] : undefined;
+  const creditsLink = creditsUrl();
 
   return (
     <div className="flex flex-col gap-10">
@@ -74,6 +76,8 @@ export default async function MemberDashboardPage({
       </div>
 
       {banner && <p className={`rounded-2xl px-5 py-4 text-sm ${banner.className}`}>{banner.text}</p>}
+
+      {creditsLink && <CreditsCard href={creditsLink} />}
 
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-5 flex items-baseline justify-between gap-3">
