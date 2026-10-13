@@ -1,4 +1,4 @@
-import { formatMeeting, formatMinutes, meetingMinutes, minutesToHours } from "@/lib/constants";
+import { appUrl, formatMeeting, formatMinutes, meetingMinutes, minutesToHours } from "@/lib/constants";
 import { button, detailRows, emailShell, escapeHtml, heading, paragraph } from "./layout";
 
 interface RequestInfo {
@@ -28,7 +28,7 @@ export function requestBlastEmail(request: RequestInfo, claimUrl: string, reopen
     [
       heading(reopened ? "Needs a tutor again" : "New tutoring request"),
       paragraph(
-        "A student is looking for help. First member to confirm gets the session. Claim it only if you can make the meeting time.",
+        "A student is looking for help. Press the button, check the details, and confirm. The first member to confirm gets the session, so only claim it if you can make the meeting time.",
       ),
       detailRows([
         ["Course", request.subject],
@@ -37,6 +37,9 @@ export function requestBlastEmail(request: RequestInfo, claimUrl: string, reopen
         ["Meeting time", meetingLabel(request)],
       ]),
       button("Claim this request", claimUrl),
+      paragraph(
+        `You can also see every open request on your dashboard: <a href="${appUrl()}/member" style="color:#0071e3;">${appUrl().replace(/^https?:\/\//, "")}/member</a>`,
+      ),
       paragraph(
         `<span style="font-size:13px;color:#86868b;">This link is personal to you, so don't forward it. The student's contact details are shared with whoever claims first. Times are Shanghai time.</span>`,
       ),
@@ -53,7 +56,7 @@ export function tutorConfirmationEmail(request: RequestInfo, tutorName: string) 
     [
       heading("It's yours! 🎉"),
       paragraph(
-        `Hi ${escapeHtml(tutorName)}, you claimed this request. Please email ${escapeHtml(request.studentName)} within 24 hours to confirm the time and pick a spot to meet.`,
+        `Hi ${escapeHtml(tutorName.split(" ")[0])}, you claimed this request. Please email ${escapeHtml(request.studentName)} within 24 hours to confirm the time and pick a spot to meet.`,
       ),
       detailRows([
         ["Student", request.studentName],
@@ -65,6 +68,9 @@ export function tutorConfirmationEmail(request: RequestInfo, tutorName: string) 
       ]),
       paragraph(
         `<span style="font-size:13px;color:#86868b;">There's nothing to log afterwards. Officers record tutoring hours themselves every weekend, using the meeting time above.</span>`,
+      ),
+      paragraph(
+        `All your sessions are on your dashboard: <a href="${appUrl()}/member" style="color:#0071e3;">${appUrl().replace(/^https?:\/\//, "")}/member</a>`,
       ),
     ].join(""),
   );
@@ -119,13 +125,14 @@ export function tutorReleasedEmail(request: RequestInfo, tutorName: string) {
 
 /** One-time sign-in PIN for a member. */
 export function loginCodeEmail(name: string, code: string, minutes: number) {
-  const subject = "Your MAT Tutoring sign-in code";
+  // The code leads the subject so it shows in phone notifications.
+  const subject = `${code} is your MAT Tutoring sign-in code`;
   const html = emailShell(
     subject,
     [
       heading("Your sign-in code"),
       paragraph(
-        `Hi ${escapeHtml(name)}, enter this code to sign in. It works once and expires in ${minutes} minutes.`,
+        `Hi ${escapeHtml(name.split(" ")[0])}, enter this code to sign in. It works once and expires in ${minutes} minutes.`,
       ),
       `<div style="margin:24px 0;padding:22px;background-color:#f5f5f7;border-radius:16px;text-align:center;">
         <span style="font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:38px;font-weight:600;letter-spacing:0.28em;color:#1d1d1f;">${escapeHtml(code)}</span>

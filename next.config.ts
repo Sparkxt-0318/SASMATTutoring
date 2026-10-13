@@ -10,8 +10,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
-          // Claim links contain a personal token, so never send them as a referrer.
-          { key: "Referrer-Policy", value: "no-referrer" },
+          // Claim links contain a personal token, so never send them to other sites.
+          // "same-origin" (not "no-referrer"): with no-referrer, a form submitted
+          // before the page's JavaScript loads carries "Origin: null", and Next.js
+          // rejects that server action as a possible cross-site request.
+          { key: "Referrer-Policy", value: "same-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },

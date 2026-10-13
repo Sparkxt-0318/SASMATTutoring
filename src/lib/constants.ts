@@ -133,3 +133,8 @@ export function formatMinutes(minutes: number): string {
 export function minutesToHours(minutes: number): string {
   return (minutes / 60).toFixed(1);
 }
+
+/** Hours for people to read: "0", "2.5", "20" (no trailing ".0"). */
+export function formatHours(minutes: number): string {
+  return String(Number((minutes / 60).toFixed(1)));
+}

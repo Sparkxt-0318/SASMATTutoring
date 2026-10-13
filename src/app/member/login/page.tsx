@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMember } from "@/lib/member-auth";
 import { CLUB_NAME } from "@/lib/constants";
+import { senderAddress } from "@/lib/email";
 import { CodeRequestForm, CodeVerifyForm } from "./CodeForms";
 
 export const metadata: Metadata = {
@@ -32,16 +33,21 @@ export default async function MemberLoginPage({
         <p className="mt-2 text-sm text-muted">
           {email
             ? `We emailed a 6-digit code to ${email}. It works once and expires in 10 minutes.`
-            : "Enter your email and we will send you a one-time code. It is new every time."}
+            : "Enter your school email and we will send you a one-time code. It is new every time."}
         </p>
         <div className="mt-6">{email ? <CodeVerifyForm email={email} /> : <CodeRequestForm />}</div>
         {email && (
-          <p className="mt-5 text-center text-xs text-faint">
-            No email?{" "}
-            <Link href="/member/login" className="text-muted hover:underline">
-              Send a new code
-            </Link>
-          </p>
+          <div className="mt-6 rounded-xl bg-surface p-4 text-xs leading-relaxed text-muted">
+            <p>
+              The email comes from <span className="font-medium text-foreground">{senderAddress()}</span>.
+              Not there after a minute? Check your Junk or Spam folder.
+            </p>
+            <p className="mt-2">
+              <Link href="/member/login" className="font-medium text-accent hover:underline">
+                Send a new code
+              </Link>
+            </p>
+          </div>
         )}
       </div>
       <p className="mt-6 text-xs text-faint">

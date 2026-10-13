@@ -1,4 +1,4 @@
-import { MEMBER_HOURS_GOAL, PROGRESS_CELL_MINUTES, minutesToHours } from "@/lib/constants";
+import { MEMBER_HOURS_GOAL, PROGRESS_CELL_MINUTES, formatHours } from "@/lib/constants";
 
 // Prefer a row count that divides the grid evenly so the last column is full.
 const ROW_OPTIONS = [7, 5, 6, 8, 4, 10];
@@ -40,7 +40,7 @@ export function ProgressGrid({
       <div className="overflow-x-auto pb-1">
         <div
           role="img"
-          aria-label={`${minutesToHours(minutes)} of ${goalHours} hours completed`}
+          aria-label={`${formatHours(minutes)} of ${goalHours} hours completed`}
           className="grid w-max grid-flow-col gap-1"
           style={{ gridTemplateRows: `repeat(${rows}, 0.875rem)`, gridAutoColumns: "0.875rem" }}
         >
@@ -52,9 +52,9 @@ export function ProgressGrid({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted">
         <span>
-          <strong className="font-semibold text-foreground">{minutesToHours(minutes)}</strong> of{" "}
+          <strong className="font-semibold text-foreground">{formatHours(minutes)}</strong> of{" "}
           {goalHours} hours
-          {remainingMinutes > 0 ? ` · ${minutesToHours(remainingMinutes)} to go` : " · Goal reached 🎉"}
+          {remainingMinutes > 0 ? ` · ${formatHours(remainingMinutes)} to go` : " · Goal reached 🎉"}
         </span>
         <span className="flex items-center gap-1.5 text-faint">
           <span className="size-2.5 rounded-[3px] bg-progress" /> Done

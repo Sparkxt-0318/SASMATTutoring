@@ -23,7 +23,7 @@ export function CodeRequestForm() {
       <TextInput
         type="email"
         name="email"
-        placeholder="Email"
+        placeholder="School email"
         autoComplete="email"
         defaultValue={state.email}
         key={state.email ?? "new"}

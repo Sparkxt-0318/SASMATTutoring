@@ -60,6 +60,43 @@ function fromAddress(): string {
   return configured || `${DEFAULT_NAME} <onboarding@resend.dev>`;
 }
 
+/** Just the email address the site sends from, for telling members what to look for. */
+export function senderAddress(): string {
+  const from = fromAddress();
+  return (from.match(/<([^>]+)>/)?.[1] ?? from).trim();
+}
+
+/**
+ * Plain-text version of an email. Mail filters (Outlook especially) trust
+ * messages more when they carry text as well as HTML, and some people read
+ * mail as text. Links keep their address so buttons still work.
+ */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href: string, label: string) => {
+      const text = label.replace(/<[^>]+>/g, "").trim();
+      if (href.startsWith("mailto:")) return text;
+      // A link that shows its own address ("site.app/member") is written once, in full.
+      return text === href || text === href.replace(/^https?:\/\//, "") ? href : `${text}: ${href}`;
+    })
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h1|h2|h3|tr|table)>/gi, "\n")
+    .replace(/<\/td>/gi, "  ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&rsquo;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Non-secret summary for the admin Email tab. */
 export function emailStatus() {
   return {
@@ -103,34 +140,36 @@ function resend(): Resend {
   return resendClient;
 }
 
-let smtpTransport: Transporter | null = null;
-function smtp(): Transporter {
-  if (!smtpTransport) {
-    const { host, port, user, pass } = smtpSettings();
-    if (!host || !user || !pass) {
-      throw new Error("SMTP is not set up. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.");
-    }
-    smtpTransport = nodemailer.createTransport({
-      host,
-      port,
-      // Port 465 uses TLS from the start; 587 upgrades with STARTTLS.
-      secure: port === 465,
-      auth: { user, pass },
-      pool: true,
-      maxConnections: 3,
-      connectionTimeout: 15_000,
-      socketTimeout: 30_000,
-    });
+/**
+ * A fresh connection for every send (or batch), closed afterwards. Serverless
+ * functions are frozen between requests, so a connection kept open from an
+ * earlier request can be dead by the time the next email needs it.
+ */
+function openSmtp(pool: boolean): Transporter {
+  const { host, port, user, pass } = smtpSettings();
+  if (!host || !user || !pass) {
+    throw new Error("SMTP is not set up. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.");
   }
-  return smtpTransport;
+  return nodemailer.createTransport({
+    host,
+    port,
+    // Port 465 uses TLS from the start; 587 upgrades with STARTTLS.
+    secure: port === 465,
+    auth: { user, pass },
+    pool,
+    maxConnections: 3,
+    connectionTimeout: 15_000,
+    socketTimeout: 30_000,
+  });
 }
 
-async function sendViaSmtp(email: OutboundEmail): Promise<void> {
-  await smtp().sendMail({
+async function sendViaSmtp(transport: Transporter, email: OutboundEmail): Promise<void> {
+  await transport.sendMail({
     from: fromAddress(),
     to: email.to,
     subject: email.subject,
     html: email.html,
+    text: htmlToText(email.html),
     replyTo: email.replyTo,
     attachments: email.attachments?.map((a) => ({
       filename: a.filename,
@@ -148,7 +187,12 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
     return;
   }
   if (emailProvider() === "smtp") {
-    await sendViaSmtp(finalEmail);
+    const transport = openSmtp(false);
+    try {
+      await sendViaSmtp(transport, finalEmail);
+    } finally {
+      transport.close();
+    }
     return;
   }
   const { error } = await resend().emails.send({
@@ -156,6 +200,7 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
     to: finalEmail.to,
     subject: finalEmail.subject,
     html: finalEmail.html,
+    text: htmlToText(finalEmail.html),
     replyTo: finalEmail.replyTo,
     attachments: finalEmail.attachments?.map((a) => ({
       filename: a.filename,
@@ -182,7 +227,13 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
   }
 
   if (emailProvider() === "smtp") {
-    const results = await Promise.allSettled(finalEmails.map((email) => sendViaSmtp(email)));
+    const transport = openSmtp(true);
+    let results: PromiseSettledResult<void>[];
+    try {
+      results = await Promise.allSettled(finalEmails.map((email) => sendViaSmtp(transport, email)));
+    } finally {
+      transport.close();
+    }
     const sent = results.flatMap((r, i) => (r.status === "fulfilled" ? [i] : []));
     const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     if (failures.length > 0) {
@@ -200,6 +251,7 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
       to: email.to,
       subject: email.subject,
       html: email.html,
+      text: htmlToText(email.html),
       replyTo: email.replyTo,
     })),
   );

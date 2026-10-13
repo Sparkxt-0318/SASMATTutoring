@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ProgressCard } from "@/components/ProgressGrid";
 import { formatMeeting, formatMinutes, meetingMinutes } from "@/lib/constants";
@@ -71,8 +72,21 @@ export default async function ClaimedPage({ params }: { params: Promise<{ token:
           </div>
         </dl>
 
-        <p className="mt-6 text-sm text-muted">
+        <a
+          href={`mailto:${request.studentEmail}?subject=${encodeURIComponent(
+            `MAT tutoring: ${request.subject}, ${formatMeeting(request.meetingStart, request.meetingEnd)}`,
+          )}`}
+          className="mt-6 flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-[15px] font-medium text-white transition-colors hover:bg-accent-hover"
+        >
+          Email {request.studentName.split(" ")[0]}
+        </a>
+        <p className="mt-5 text-sm text-muted">
           Nothing to log afterwards. Officers record tutoring hours every weekend.
+        </p>
+        <p className="mt-3 text-sm">
+          <Link href="/member" className="font-medium text-accent hover:underline">
+            See all my sessions
+          </Link>
         </p>
       </div>
     </TokenShell>
