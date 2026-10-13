@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { emailStatus } from "@/lib/email";
 import { otpAllowedEmails } from "@/lib/login-code";
 import { prisma } from "@/lib/db";
+import { appUrl } from "@/lib/constants";
 import { TestEmailForm } from "./TestEmailForm";
 
 export const metadata: Metadata = { title: "Email" };
@@ -16,6 +17,9 @@ export default async function AdminEmailPage() {
   const activeMembers = await prisma.member.count({ where: { active: true } });
   const usingResendTestSender =
     status.provider === "resend" && status.from.toLowerCase().includes("onboarding@resend.dev");
+
+  const siteUrl = appUrl();
+  const linksBroken = siteUrl.includes("localhost") && Boolean(process.env.VERCEL);
 
   const rows: Array<[string, string]> = [
     ["Sending method", status.provider === "smtp" ? "SMTP (a normal mailbox)" : "Resend"],
@@ -34,6 +38,10 @@ export default async function AdminEmailPage() {
         : otpRawSet
           ? "Set, but no valid email address in it. Check it for typos."
           : "None",
+    ],
+    [
+      "Claim links in emails open",
+      linksBroken ? `${siteUrl}, which members cannot open. Set APP_URL in Vercel to this site's address.` : siteUrl,
     ],
     ["Dry run", status.dryRun ? "On: nothing is really sent" : "Off"],
     [

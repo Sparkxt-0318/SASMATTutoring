@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "./db";
 import { generateToken } from "./tokens";
+import { appUrl } from "./constants";
 import { sendBatch, sendAdminAlert, type OutboundEmail } from "./email";
 import { adminAlertEmail, requestBlastEmail } from "@/emails/templates";
 
@@ -34,12 +35,12 @@ export async function sendRequestBlast(
     ),
   );
 
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const siteUrl = appUrl();
   const emails: OutboundEmail[] = tokens.map((claimToken) => {
     const member = members.find((m) => m.id === claimToken.memberId)!;
     const { subject, html } = requestBlastEmail(
       request,
-      `${appUrl}/claim/${claimToken.token}`,
+      `${siteUrl}/claim/${claimToken.token}`,
       options.reopened,
     );
     return { to: member.email, subject, html };

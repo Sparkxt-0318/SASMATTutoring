@@ -43,6 +43,19 @@ export function creditsUrl(): string | null {
   }
 }
 
+/**
+ * The site's own address, used to build the Claim links in member emails. It is
+ * APP_URL when set; otherwise Vercel's production address (Vercel provides it
+ * automatically), so links never point at localhost on the live site.
+ */
+export function appUrl(): string {
+  const configured = process.env.APP_URL?.trim().replace(/^["']+|["']+$/g, "").replace(/\/+$/, "");
+  if (configured) return configured;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercel) return `https://${vercel}`;
+  return "http://localhost:3000";
+}
+
 /** Students can book at most this many days ahead. */
 export const MAX_DAYS_AHEAD = 60;
 
