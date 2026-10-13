@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { emailStatus } from "@/lib/email";
 import { otpAllowedEmails } from "@/lib/login-code";
+import { prisma } from "@/lib/db";
 import { TestEmailForm } from "./TestEmailForm";
 
 export const metadata: Metadata = { title: "Email" };
@@ -8,10 +9,11 @@ export const metadata: Metadata = { title: "Email" };
 // Reads settings on every visit so it always shows what is live.
 export const dynamic = "force-dynamic";
 
-export default function AdminEmailPage() {
+export default async function AdminEmailPage() {
   const status = emailStatus();
   const otp = otpAllowedEmails();
   const otpRawSet = Boolean(process.env.OTP_LOGIN_EMAILS?.trim());
+  const activeMembers = await prisma.member.count({ where: { active: true } });
   const usingResendTestSender =
     status.provider === "resend" && status.from.toLowerCase().includes("onboarding@resend.dev");
 
@@ -24,13 +26,14 @@ export default function AdminEmailPage() {
       "Alerts go to",
       status.alertRecipients.length > 0 ? status.alertRecipients.join(", ") : "(nobody: set REPORT_EMAIL)",
     ],
+    ["Who can sign in as a member", `Every active member on the Members tab (${activeMembers})`],
     [
-      "Members who can sign in",
+      "Extra sign-in addresses (OTP_LOGIN_EMAILS)",
       otp.length > 0
         ? otp.join(", ")
         : otpRawSet
-          ? "Nobody: OTP_LOGIN_EMAILS is set but holds no valid email address. Check it for typos."
-          : "Nobody: OTP_LOGIN_EMAILS is not set on this deployment. Add it in Vercel, then redeploy.",
+          ? "Set, but no valid email address in it. Check it for typos."
+          : "None",
     ],
     ["Dry run", status.dryRun ? "On: nothing is really sent" : "Off"],
     [

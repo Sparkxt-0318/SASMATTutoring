@@ -34,30 +34,29 @@ const nameSchema = z
   .max(100, "Name is too long.")
   .regex(/^[^\u0000-\u001f\u007f]+$/, "Please use a normal name without line breaks.");
 const WRONG = "That code is wrong or has expired. Request a new one.";
+const NOT_A_MEMBER = "This email isn't on the member list. If you are a member, ask an officer to add you.";
 
 /**
  * Step 1 of member sign-in: email a fresh random PIN. This is the ONLY way to
- * sign in as a member, and only approved addresses (OTP_LOGIN_EMAILS) can use it.
+ * sign in as a member. Only active members on the roster (the admin Members tab)
+ * can use it, plus any extra addresses in OTP_LOGIN_EMAILS.
  */
 export async function requestLoginCode(_prev: CodeState, formData: FormData): Promise<CodeState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) return { error: "Please enter a valid email address." };
   const email = parsed.data;
 
-  if (!otpAllowedEmails().includes(email)) {
-    return { error: "Member sign-in isn't open for this email address.", email };
-  }
-
   let member = await prisma.member.findUnique({ where: { email } });
   if (!member) {
-    // First visit for an approved address: ask for a name once, then create the account.
+    if (!otpAllowedEmails().includes(email)) return { error: NOT_A_MEMBER, email };
+    // An extra address from OTP_LOGIN_EMAILS, first visit: ask for a name once, then add it.
     const rawName = formData.get("name");
     if (rawName === null || String(rawName).trim() === "") return { needsName: true, email };
     const name = nameSchema.safeParse(rawName);
     if (!name.success) return { needsName: true, email, error: name.error.issues[0]?.message };
     member = await prisma.member.create({ data: { name: name.data, email } });
   }
-  if (!member.active) return { error: "This account was deactivated. Please ask an officer.", email };
+  if (!member.active) return { error: NOT_A_MEMBER, email };
 
   // Throttle: this is what keeps a 6-digit code safe from guessing.
   const now = Date.now();
@@ -113,7 +112,6 @@ export async function verifyLoginCode(_prev: CodeState, formData: FormData): Pro
   if (!parsed.success || code.length !== 6) return { error: "Enter the 6-digit code from your email." };
   const email = parsed.data;
 
-  if (!otpAllowedEmails().includes(email)) return { error: WRONG };
   const member = await prisma.member.findUnique({ where: { email } });
   if (!member || !member.active) return { error: WRONG };
 

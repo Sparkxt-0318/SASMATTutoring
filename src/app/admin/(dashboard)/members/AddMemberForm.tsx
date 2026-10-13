@@ -34,7 +34,8 @@ export function AddMemberForm() {
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state.added && (
         <p className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
-          Added {state.added.name}. They will get an email for every new tutoring request.
+          Added {state.added.name}. They will get an email for every new tutoring request and can
+          sign in with an emailed code.
         </p>
       )}
     </form>

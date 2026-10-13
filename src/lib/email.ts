@@ -12,20 +12,52 @@ export interface OutboundEmail {
 }
 
 /**
- * Two ways to send, chosen with EMAIL_PROVIDER:
- *  - "resend" (default): Resend API. Needs a verified domain to reach other people.
- *  - "smtp": any mailbox that allows SMTP (a school or Gmail account, for example).
+ * Two ways to send:
+ *  - "smtp": any mailbox that allows SMTP (a club Gmail account, for example).
+ *  - "resend": Resend API. Needs a verified domain to reach other people.
+ * EMAIL_PROVIDER picks one. When it is not set, SMTP is used as soon as
+ * SMTP_USER or SMTP_PASSWORD is filled in (so a half-filled setup reports
+ * "SMTP is not set up" instead of a confusing Resend error), otherwise Resend.
  */
 export function emailProvider(): "resend" | "smtp" {
-  return process.env.EMAIL_PROVIDER === "smtp" ? "smtp" : "resend";
+  const chosen = process.env.EMAIL_PROVIDER?.trim().toLowerCase();
+  if (chosen === "smtp" || chosen === "resend") return chosen;
+  return process.env.SMTP_USER?.trim() || process.env.SMTP_PASSWORD?.trim() ? "smtp" : "resend";
+}
+
+/**
+ * SMTP login, cleaned up. For a Gmail address the server defaults to
+ * smtp.gmail.com, and spaces are removed from the password because Google shows
+ * app passwords in groups of four ("abcd efgh ijkl mnop").
+ */
+export function smtpSettings() {
+  const rawUser = (process.env.SMTP_USER ?? "").trim();
+  const user = parseEmailList(rawUser)[0] ?? rawUser.replace(/^["']+|["']+$/g, "");
+  const gmail = /@(gmail|googlemail)\.com$/i.test(user);
+  const host = (process.env.SMTP_HOST ?? "").trim() || (gmail ? "smtp.gmail.com" : "");
+  const rawPass = process.env.SMTP_PASSWORD ?? "";
+  const pass = gmail ? rawPass.replace(/[\s"']/g, "") : rawPass.trim();
+  const port = Number(process.env.SMTP_PORT) || 587;
+  return { host, port, user, pass, gmail };
 }
 
 export function isDryRun(): boolean {
   return process.env.EMAIL_DRY_RUN === "true";
 }
 
+const DEFAULT_NAME = "MAT Tutoring";
+
 function fromAddress(): string {
-  return process.env.EMAIL_FROM ?? "MAT Tutoring <onboarding@resend.dev>";
+  const configured = process.env.EMAIL_FROM?.trim().replace(/^["']+|["']+$/g, "") ?? "";
+  if (emailProvider() === "smtp") {
+    // A mailbox sends as itself (Gmail rewrites anything else), so use its own
+    // address and keep only the display name from EMAIL_FROM.
+    const { user, gmail } = smtpSettings();
+    const name = configured.match(/^(.+?)\s*<[^>]*>$/)?.[1]?.replace(/["']/g, "").trim() || DEFAULT_NAME;
+    if (gmail || !configured || /resend\.dev/i.test(configured)) return `${name} <${user}>`;
+    return configured;
+  }
+  return configured || `${DEFAULT_NAME} <onboarding@resend.dev>`;
 }
 
 /** Non-secret summary for the admin Email tab. */
@@ -33,7 +65,7 @@ export function emailStatus() {
   return {
     provider: emailProvider(),
     from: fromAddress(),
-    smtpHost: emailProvider() === "smtp" ? (process.env.SMTP_HOST ?? "(not set)") : null,
+    smtpHost: emailProvider() === "smtp" ? smtpSettings().host || "(not set)" : null,
     dryRun: isDryRun(),
     override: process.env.TEST_EMAIL_OVERRIDE || null,
     reportEmail: reportEmail(),
@@ -74,13 +106,10 @@ function resend(): Resend {
 let smtpTransport: Transporter | null = null;
 function smtp(): Transporter {
   if (!smtpTransport) {
-    const host = process.env.SMTP_HOST;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASSWORD;
+    const { host, port, user, pass } = smtpSettings();
     if (!host || !user || !pass) {
       throw new Error("SMTP is not set up. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.");
     }
-    const port = Number(process.env.SMTP_PORT) || 587;
     smtpTransport = nodemailer.createTransport({
       host,
       port,

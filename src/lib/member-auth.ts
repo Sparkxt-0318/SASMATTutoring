@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "./db";
 import { secretKey } from "./auth";
-import { otpAllowedEmails } from "./login-code";
 import type { Member } from "@/generated/prisma/client";
 
 const COOKIE_NAME = "mat_member_session";
@@ -33,11 +32,8 @@ export async function destroyMemberSession(): Promise<void> {
 }
 
 /**
- * The signed-in member, or null. Checked against the database on every call, and
- * only addresses on the approved sign-in list (OTP_LOGIN_EMAILS) can ever be a
- * signed-in member. So even if an account or an old session exists for anyone
- * else, it gives them nothing, and taking an address off the list signs that
- * person out immediately.
+ * The signed-in member, or null. Checked against the database on every call, so
+ * deactivating someone in the Members tab signs them out immediately.
  */
 export async function getMember(): Promise<Member | null> {
   const store = await cookies();
@@ -48,7 +44,6 @@ export async function getMember(): Promise<Member | null> {
     if (payload.role !== "member" || !payload.sub) return null;
     const member = await prisma.member.findUnique({ where: { id: payload.sub } });
     if (!member || !member.active) return null;
-    if (!otpAllowedEmails().includes(member.email)) return null;
     return member;
   } catch {
     return null;

@@ -32,11 +32,14 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
 - Two separate logins: officers use the shared `ADMIN_PASSWORD` (`src/lib/auth.ts`),
   members sign in ONLY with an emailed one-time PIN (`src/lib/actions/login-code.ts`,
   `src/lib/login-code.ts`, page `/member/login`, session `src/lib/member-auth.ts`).
-  There are no member passwords and no sign-up page: do not add them back. Only emails in
-  `OTP_LOGIN_EMAILS` can ever sign in, and `getMember()` re-checks that list and the
-  database on every request. Other roster members only receive request emails and use
-  their emailed Claim links. Every member server action must call `requireMember()`.
-  Claiming (email link and dashboard) goes through `claimForMember` in `src/lib/claiming.ts`.
+  There are no member passwords and no sign-up page: do not add them back. The member
+  list is the `Member` table (admin Members tab, CSV import via `importMembers` and
+  `src/lib/roster-import.ts`): only active members can sign in, plus extra addresses in
+  `OTP_LOGIN_EMAILS` (first sign in asks for a name and adds them). `getMember()` re-checks
+  the database on every request, so deactivating signs out at once. Never commit real
+  member names or emails (the repo is public). Every member server action must call
+  `requireMember()`. Claiming (email link and dashboard) goes through `claimForMember`
+  in `src/lib/claiming.ts`.
 - PIN details: random 6 digits via `crypto.randomInt`, stored only as an HMAC, single use,
   10 minutes, 5 guesses, request limits. Alert emails go to `alertRecipients()`
   (REPORT_EMAIL plus EXTRA_ALERT_EMAILS); never hardcode officer email addresses in the repo
@@ -51,7 +54,8 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
   helpers live in `src/lib/constants.ts`. `receivedTeacherHelp` is survey data
   for officers only; never show it to tutors or put it in emails.
 - Emails: `src/lib/email.ts` honors `EMAIL_DRY_RUN` (log only) and
-  `TEST_EMAIL_OVERRIDE` (reroute everything). Keep dry-run on in dev; never put
-  real member emails in `prisma/seed.ts`.
+  `TEST_EMAIL_OVERRIDE` (reroute everything). SMTP is chosen automatically when
+  `SMTP_USER`/`SMTP_PASSWORD` are set; Gmail needs only those two (`smtpSettings()`).
+  Keep dry-run on in dev; never put real member emails in `prisma/seed.ts`.
 - Verify changes with `npm run lint`, `npx tsc --noEmit`, `npm run build`, and
   `npm run race-test` (needs Postgres running and `.env` configured).

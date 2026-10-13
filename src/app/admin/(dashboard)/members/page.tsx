@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { setMemberActive } from "@/lib/actions/members";
 import { AddMemberForm } from "./AddMemberForm";
+import { ImportMembersForm } from "./ImportMembersForm";
 import { formatDate } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Members" };
@@ -12,17 +13,26 @@ export default async function AdminMembersPage() {
     include: { _count: { select: { claimedRequests: true } } },
   });
 
+  const activeCount = members.filter((m) => m.active).length;
+
   return (
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">Members</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Everyone here gets an email when a tutoring request arrives, with a personal Claim link
-        that works without signing in. Member sign in is a separate, stricter list: only the
-        addresses in the OTP_LOGIN_EMAILS setting can sign in, using an emailed one-time code.
+        This is the member list. Everyone active here gets an email when a tutoring request
+        arrives, and can sign in at /member/login with a one-time code sent to their email.
+        Nobody else can sign in. Deactivate someone to stop both.
+      </p>
+      <p className="mt-3 text-sm font-medium">
+        {activeCount} active {activeCount === 1 ? "member" : "members"}
       </p>
 
       <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
         <AddMemberForm />
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm">
+        <ImportMembersForm />
       </div>
 
       <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
