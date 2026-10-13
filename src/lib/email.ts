@@ -26,15 +26,16 @@ export function emailProvider(): "resend" | "smtp" {
 }
 
 /**
- * SMTP login, cleaned up. For a Gmail address the server defaults to
- * smtp.gmail.com, and spaces are removed from the password because Google shows
- * app passwords in groups of four ("abcd efgh ijkl mnop").
+ * SMTP login, cleaned up. A Gmail address can only send through smtp.gmail.com,
+ * so that server is always used for one (even if SMTP_HOST still names an old
+ * provider), and spaces are removed from the password because Google shows app
+ * passwords in groups of four ("abcd efgh ijkl mnop").
  */
 export function smtpSettings() {
   const rawUser = (process.env.SMTP_USER ?? "").trim();
   const user = parseEmailList(rawUser)[0] ?? rawUser.replace(/^["']+|["']+$/g, "");
   const gmail = /@(gmail|googlemail)\.com$/i.test(user);
-  const host = (process.env.SMTP_HOST ?? "").trim() || (gmail ? "smtp.gmail.com" : "");
+  const host = gmail ? "smtp.gmail.com" : (process.env.SMTP_HOST ?? "").trim();
   const rawPass = process.env.SMTP_PASSWORD ?? "";
   const pass = gmail ? rawPass.replace(/[\s"']/g, "") : rawPass.trim();
   const port = Number(process.env.SMTP_PORT) || 587;
