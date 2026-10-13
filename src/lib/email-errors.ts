@@ -15,8 +15,11 @@ export function explainEmailError(raw: string): string | null {
   if (/application-specific password|534-5\.7\.9/.test(text)) {
     return "Gmail needs an app password, not your normal password. Turn on 2-step verification for the account, create an app password, and use it as SMTP_PASSWORD.";
   }
+  if (/basic authentication is not supported|5\.7\.30/.test(text)) {
+    return "Microsoft no longer accepts a password for sending from this account. School Microsoft 365 accounts cannot be used for this. Use a Gmail account instead: set SMTP_USER and SMTP_PASSWORD (an app password) in Vercel.";
+  }
   if (/basic authentication is disabled|smtpclientauthentication|5\.7\.57|5\.7\.139|535 5\.7\.3|authentication unsuccessful/.test(text)) {
-    return "The mail provider refused the login. Schools often turn off password and app-password sign-in on Microsoft 365. Try a club Gmail account instead (smtp.gmail.com with an app password).";
+    return "The mail provider refused the login. Schools often turn off password and app-password sign-in on Microsoft 365. Try a Gmail account instead (SMTP_USER and an app password in SMTP_PASSWORD).";
   }
   if (/username and password not accepted|invalid login|535/.test(text)) {
     return "The mail provider says the username or password is wrong. Check SMTP_USER and SMTP_PASSWORD in Vercel (use an app password), then redeploy.";
