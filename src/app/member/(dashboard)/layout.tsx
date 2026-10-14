@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HomeButton } from "@/components/HomeButton";
 import { requireMember } from "@/lib/member-auth";
 import { memberLogout } from "@/lib/actions/member";
 
@@ -13,10 +14,16 @@ export default async function MemberLayout({ children }: { children: React.React
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="sticky top-0 z-50 border-b border-hairline/60 bg-white/70 backdrop-blur-xl">
         <div className="mx-auto flex h-12 max-w-4xl items-center justify-between px-6">
-          <Link href="/" className="text-[15px] font-semibold tracking-tight">
-            MAT <span className="font-normal text-muted">Member</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <HomeButton />
+            <Link href="/member" className="text-[15px] font-semibold tracking-tight">
+              MAT <span className="font-normal text-muted">Member</span>
+            </Link>
+          </div>
           <div className="flex items-center gap-5">
+            <Link href="/member" className="text-sm text-muted transition-colors hover:text-foreground">
+              Dashboard
+            </Link>
             <span className="hidden text-sm text-muted sm:inline">{member.name}</span>
             <form action={memberLogout}>
               <button

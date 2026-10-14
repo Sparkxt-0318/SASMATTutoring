@@ -1,22 +1,26 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CLUB_NAME } from "@/lib/constants";
+import { SimpleHeader } from "./HomeButton";
 
 /** Minimal centered layout for email-link pages (claim). */
 export function TokenShell({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-surface px-6 py-16">
-      <p className="mb-6 text-sm font-semibold uppercase tracking-widest text-muted">
-        {CLUB_NAME} · Tutoring
-      </p>
-      {children}
-      {footer && <div className="mt-5 flex w-full justify-center">{footer}</div>}
-      <p className="mt-8 text-xs text-faint">
-        <Link href="/" className="hover:text-muted transition-colors">
-          MAT Tutoring home
-        </Link>
-      </p>
-    </main>
+    <>
+      <SimpleHeader />
+      <main className="flex min-h-[calc(100vh-3rem)] flex-col items-center justify-center bg-surface px-6 py-16">
+        <p className="mb-6 text-sm font-semibold uppercase tracking-widest text-muted">
+          {CLUB_NAME} · Tutoring
+        </p>
+        {children}
+        {footer && <div className="mt-5 flex w-full justify-center">{footer}</div>}
+        <p className="mt-8 text-xs text-faint">
+          <Link href="/" className="hover:text-muted transition-colors">
+            MAT Tutoring home
+          </Link>
+        </p>
+      </main>
+    </>
   );
 }
 

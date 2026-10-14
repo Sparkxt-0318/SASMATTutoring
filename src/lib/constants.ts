@@ -65,8 +65,8 @@ export const MAX_DAYS_AHEAD = 60;
  */
 export const MEMBER_HOURS_GOAL = Number(process.env.MEMBER_HOURS_GOAL) || 20;
 
-/** One square in the progress grid represents this many minutes of tutoring. */
-export const PROGRESS_CELL_MINUTES = 15;
+/** One square in the progress grid is one hour of tutoring. */
+export const PROGRESS_CELL_MINUTES = 60;
 
 export const CLUB_NAME = "Mu Alpha Theta";
 export const SCHOOL_NAME = "Shanghai American School";

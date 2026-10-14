@@ -25,6 +25,9 @@
   --color-progress: #34c759;
   --color-progress-partial: #a8e6b9;
   --color-progress-empty: #e5e5ea;
+  /* Gold squares for hours beyond the goal. */
+  --color-progress-extra: #ffb800;
+  --color-progress-extra-partial: #ffe299;
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

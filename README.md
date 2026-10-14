@@ -162,7 +162,7 @@ If the club outgrows that, upgrade Resend or trim the roster blast.
 - Credited hours per member (and the combined all-time total) live on
   `/admin/leaderboard`, with CSV export for officer reports. The goal each
   member's grid fills toward is `MEMBER_HOURS_GOAL` (default 20 hours; one square
-  = 15 minutes). Change it in the Vercel environment variables.
+  = one hour, and hours beyond the goal show as gold squares on extra rows). Change it in the Vercel environment variables.
 - Every credit is listed under "Credited" in `/admin/hours`, with an Undo button
   that puts the session back in the review queue.
 - **Check Your Credits:** members' dashboards and the admin Requests page show a card that

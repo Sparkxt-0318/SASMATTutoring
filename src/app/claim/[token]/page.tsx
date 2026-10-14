@@ -3,9 +3,7 @@ import { prisma } from "@/lib/db";
 import { claimRequest } from "@/lib/actions/claims";
 import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ProgressCard } from "@/components/ProgressGrid";
 import { formatDate, formatMeeting, formatMinutes, isPast, meetingMinutes } from "@/lib/constants";
-import { getMemberMinutes } from "@/lib/stats";
 import { TokenShell, TokenCard, InvalidTokenCard } from "@/components/TokenShell";
 
 export const metadata: Metadata = {
@@ -43,12 +41,11 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     );
   }
 
-  const progress = <ProgressCard minutes={await getMemberMinutes(member.id)} />;
 
   if (request.status === "CLAIMED" || request.status === "COMPLETED") {
     const wasMe = request.claimedById === member.id;
     return (
-      <TokenShell footer={progress}>
+      <TokenShell>
         <TokenCard
           icon={wasMe ? "🎉" : "⚡️"}
           title={wasMe ? "You claimed this one" : `Claimed by ${request.claimedBy?.name ?? "another member"}`}
@@ -66,7 +63,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
 
   if (request.status === "CANCELLED" || request.status === "EXPIRED") {
     return (
-      <TokenShell footer={progress}>
+      <TokenShell>
         <TokenCard
           icon="🗓️"
           title={request.status === "CANCELLED" ? "This request was cancelled" : "This request expired"}
@@ -79,7 +76,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
   // Still OPEN, but the meeting time has already started.
   if (isPast(request.meetingStart)) {
     return (
-      <TokenShell footer={progress}>
+      <TokenShell>
         <TokenCard
           icon="⏰"
           title="This meeting time has passed"
@@ -93,7 +90,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
   const length = formatMinutes(meetingMinutes(request.meetingStart, request.meetingEnd));
 
   return (
-    <TokenShell footer={progress}>
+    <TokenShell>
       <div className="rise-in w-full max-w-md rounded-2xl bg-white p-8 shadow-sm sm:p-10">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight">Tutoring request</h1>

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { ProgressCard } from "@/components/ProgressGrid";
 import { formatMeeting, formatMinutes, meetingMinutes } from "@/lib/constants";
-import { getMemberMinutes } from "@/lib/stats";
 import { TokenShell, InvalidTokenCard } from "@/components/TokenShell";
 
 export const metadata: Metadata = {
@@ -23,11 +21,10 @@ export default async function ClaimedPage({ params }: { params: Promise<{ token:
     return <InvalidTokenCard />;
   }
 
-  const { request, member } = claimToken;
-  const progress = <ProgressCard minutes={await getMemberMinutes(member.id)} />;
+  const { request } = claimToken;
 
   return (
-    <TokenShell footer={progress}>
+    <TokenShell>
       <div className="rise-in w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm sm:p-10">
         <div className="text-4xl" aria-hidden>
           🎉
