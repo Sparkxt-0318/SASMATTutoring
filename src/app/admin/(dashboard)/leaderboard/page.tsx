@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { ProgressGrid } from "@/components/ProgressGrid";
+import { requireAdmin } from "@/lib/auth";
 import { countAwaitingCredit, getCombinedTotal, getLeaderboard } from "@/lib/stats";
 import { MEMBER_HOURS_GOAL, minutesToHours } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Leaderboard" };
 
 export default async function AdminLeaderboardPage() {
+  await requireAdmin();
   const [leaderboard, combined, awaitingCredit] = await Promise.all([
     getLeaderboard(),
     getCombinedTotal(),
@@ -35,6 +37,13 @@ export default async function AdminLeaderboardPage() {
             download
           >
             Export all sessions
+          </a>
+          <a
+            href="/api/admin/export/backup"
+            className="rounded-full bg-surface px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-hairline/60"
+            download
+          >
+            Full backup (JSON)
           </a>
         </div>
       </div>

@@ -10,8 +10,6 @@ export const metadata: Metadata = {
 
 // Rendered per request so the earliest selectable date is always "today".
 export const dynamic = "force-dynamic";
-// The member email blast runs after the response, within this limit (seconds).
-export const maxDuration = 60;
 
 export default function RequestPage() {
   return (

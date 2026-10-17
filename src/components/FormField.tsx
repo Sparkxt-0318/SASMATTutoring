@@ -1,29 +1,56 @@
-import type { ComponentProps, ReactNode } from "react";
+import { cloneElement, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from "react";
 
 const inputStyles =
   "w-full rounded-xl border border-hairline bg-white px-4 py-3 text-[15px] text-foreground placeholder:text-faint transition-shadow focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15";
 
+/**
+ * A labeled form control. The hint or error is linked to the control with
+ * aria-describedby, and the control gets aria-invalid when there is an error
+ * (#15). Pass `group` for a set of radios: it renders a fieldset with a legend.
+ */
 export function Field({
   label,
   htmlFor,
   error,
   hint,
+  group = false,
   children,
 }: {
   label: string;
   htmlFor: string;
   error?: string;
   hint?: string;
+  group?: boolean;
   children: ReactNode;
 }) {
+  const noteId = `${htmlFor}-note`;
+  const note = error ?? hint;
+  const a11y = {
+    "aria-describedby": note ? noteId : undefined,
+    "aria-invalid": error ? true : undefined,
+  };
+  const message = note && (
+    <p id={noteId} className={`text-xs ${error ? "text-red-600" : "text-faint"}`}>
+      {note}
+    </p>
+  );
+
+  if (group) {
+    return (
+      <fieldset className="flex flex-col gap-1.5" {...a11y}>
+        <legend className="mb-1.5 text-sm font-medium text-foreground">{label}</legend>
+        {children}
+        {message}
+      </fieldset>
+    );
+  }
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">
         {label}
       </label>
-      {children}
-      {hint && !error && <p className="text-xs text-faint">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {isValidElement(children) ? cloneElement(children as ReactElement<Record<string, unknown>>, a11y) : children}
+      {message}
     </div>
   );
 }

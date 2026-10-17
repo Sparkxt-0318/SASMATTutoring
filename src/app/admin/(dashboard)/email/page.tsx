@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { requireAdmin } from "@/lib/auth";
 import { emailStatus } from "@/lib/email";
+import { BULK_SHARE, sentToday } from "@/lib/email-budget";
 import { otpAllowedEmails } from "@/lib/login-code";
 import { prisma } from "@/lib/db";
 import { appUrl } from "@/lib/constants";
@@ -11,10 +13,12 @@ export const metadata: Metadata = { title: "Email" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminEmailPage() {
+  await requireAdmin();
   const status = emailStatus();
   const otp = otpAllowedEmails();
   const otpRawSet = Boolean(process.env.OTP_LOGIN_EMAILS?.trim());
-  const activeMembers = await prisma.member.count({ where: { active: true } });
+  const [activeMembers, sent] = await Promise.all([prisma.member.count({ where: { active: true } }), sentToday()]);
+  const weakPassword = (process.env.ADMIN_PASSWORD ?? "").length < 12;
   const usingResendTestSender =
     status.provider === "resend" && status.from.toLowerCase().includes("onboarding@resend.dev");
 
@@ -43,6 +47,10 @@ export default async function AdminEmailPage() {
       "Claim links in emails open",
       linksBroken ? `${siteUrl}, which members cannot open. Set APP_URL in Vercel to this site's address.` : siteUrl,
     ],
+    [
+      "Sent today (UTC)",
+      `${sent} of ${status.dailyLimit} (member request emails pause at ${Math.floor(status.dailyLimit * BULK_SHARE)}; set EMAIL_DAILY_LIMIT to change)`,
+    ],
     ["Dry run", status.dryRun ? "On: nothing is really sent" : "Off"],
     [
       "Test override",
@@ -63,10 +71,20 @@ export default async function AdminEmailPage() {
           <p className="font-semibold">Email is in test mode, so members will not get anything yet.</p>
           <p className="mt-1">
             Resend&rsquo;s shared test sender only delivers to the address your Resend account was
-            created with. To email everyone, add these settings in Vercel and redeploy:{" "}
-            <code>EMAIL_PROVIDER=smtp</code>, <code>SMTP_HOST</code>, <code>SMTP_PORT</code>,{" "}
-            <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, and set <code>EMAIL_FROM</code> to the
-            same mailbox. A club Gmail account with an app password is the most reliable choice.
+            created with. To email everyone, use a club Gmail account: in Vercel set{" "}
+            <code>SMTP_USER</code> to the Gmail address and <code>SMTP_PASSWORD</code> to an app
+            password, then redeploy. Nothing else is needed (other mailboxes also need{" "}
+            <code>SMTP_HOST</code>).
+          </p>
+        </div>
+      )}
+
+      {weakPassword && (
+        <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-700">
+          <p className="font-semibold">The officer password is short.</p>
+          <p className="mt-1">
+            Set <code>ADMIN_PASSWORD</code> in Vercel to at least 12 characters. Changing it signs
+            every officer out, and nobody else.
           </p>
         </div>
       )}

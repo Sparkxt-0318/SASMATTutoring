@@ -7,5 +7,5 @@ export async function GET(): Promise<Response> {
   if (!(await isAdmin())) {
     return new Response("Unauthorized", { status: 401 });
   }
-  return csvResponse((await buildSessionsCsv()).split("\n"), "mat-tutoring-all-sessions.csv");
+  return csvResponse((await buildSessionsCsv({ includeSurvey: true })).split("\n"), "mat-tutoring-all-sessions.csv");
 }

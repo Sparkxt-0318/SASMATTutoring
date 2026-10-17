@@ -35,7 +35,7 @@ export default async function MemberLoginPage({
           </h1>
           <p className="mt-2 text-sm text-muted">
             {email
-              ? `We emailed a 6-digit code to ${email}. It works once and expires in 10 minutes.`
+              ? `If ${email} is on the member list, we emailed it a 6-digit code. It works once and expires in 10 minutes.`
               : "Enter your school email and we will send you a one-time code. It is new every time."}
           </p>
           <div className="mt-6">{email ? <CodeVerifyForm email={email} /> : <CodeRequestForm />}</div>
@@ -43,7 +43,8 @@ export default async function MemberLoginPage({
             <div className="mt-6 rounded-xl bg-surface p-4 text-xs leading-relaxed text-muted">
               <p>
                 The email comes from <span className="font-medium text-foreground">{senderAddress()}</span>.
-                Not there after a minute? Check your Junk or Spam folder.
+                Not there after a minute? Check your Junk or Spam folder, and check the address
+                is the one the club has for you.
               </p>
               <p className="mt-2">
                 <Link href="/member/login" className="font-medium text-accent hover:underline">

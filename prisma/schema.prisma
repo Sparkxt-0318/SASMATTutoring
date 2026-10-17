@@ -8,6 +8,8 @@ datasource db {
 }
 
 enum RequestStatus {
+  /// Submitted, waiting for the student to press the link in their confirmation email.
+  UNCONFIRMED
   OPEN
   CLAIMED
   COMPLETED
@@ -15,6 +17,8 @@ enum RequestStatus {
   EXPIRED
 }
 
+/// Officers record credit directly, so only APPROVED is ever written. PENDING and
+/// REJECTED stay so old rows and the column default keep working without a type rewrite.
 enum CreditStatus {
   PENDING
   APPROVED
@@ -27,33 +31,45 @@ model Member {
   email     String   @unique
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
-
-  // Site login. Officers hand out a temporary password and the member must
-  // replace it on first sign in. Repeated failures lock the account briefly.
-  passwordHash       String?
-  mustChangePassword Boolean   @default(false)
-  failedLogins       Int       @default(0)
-  lockedUntil        DateTime?
+  /// Part of every member session. Bumped on deactivation, so old sessions stay
+  /// dead even if the member is reactivated later.
+  sessionVersion Int @default(0)
 
   claimTokens     ClaimToken[]
   claimedRequests TutoringRequest[] @relation("ClaimedBy")
   credits         CreditLog[]
-  loginCodes      LoginCode[]
 }
 
-/// One-time sign-in PIN emailed to a member. Only a keyed hash is stored, never the code itself.
+/// One-time sign-in PIN for an email address. Only a keyed hash is stored, never the code itself.
 model LoginCode {
-  id        String    @id @default(cuid())
-  memberId  String
-  codeHash  String
-  attempts  Int       @default(0)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id          String    @id @default(cuid())
+  email       String
+  /// First sign in of an OTP_LOGIN_EMAILS address: the name to use once the code is verified.
+  pendingName String?
+  codeHash    String
+  attempts    Int       @default(0)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
 
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  @@index([email, createdAt])
+}
 
-  @@index([memberId, createdAt])
+/// One officer sign-in attempt, kept for 15 minutes of throttling. Only a keyed hash of the IP.
+model AdminLoginAttempt {
+  id        String   @id @default(cuid())
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  @@index([ipHash, createdAt])
+  @@index([createdAt])
+}
+
+/// Emails sent per UTC day, so a burst can never use up the mailbox's daily limit.
+model EmailBudget {
+  day       String    @id
+  sent      Int       @default(0)
+  alertedAt DateTime?
 }
 
 model TutoringRequest {
@@ -73,6 +89,10 @@ model TutoringRequest {
   claimedBy    Member?       @relation("ClaimedBy", fields: [claimedById], references: [id])
   claimedAt    DateTime?
   createdAt    DateTime      @default(now())
+  /// Secret in the student's confirmation link, which also opens their status page.
+  confirmToken String?       @unique
+  /// When the student confirmed. Members are emailed only after this.
+  confirmedAt  DateTime?
 
   claimTokens ClaimToken[]
   credit      CreditLog?

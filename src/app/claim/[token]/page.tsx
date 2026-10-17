@@ -5,6 +5,7 @@ import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatMeeting, formatMinutes, isPast, meetingMinutes } from "@/lib/constants";
 import { TokenShell, TokenCard, InvalidTokenCard } from "@/components/TokenShell";
+import { canSeeStudentDetails } from "@/lib/claim-access";
 
 export const metadata: Metadata = {
   title: "Claim request",
@@ -13,8 +14,18 @@ export const metadata: Metadata = {
 
 // This page performs ZERO writes on GET: email scanners that prefetch links
 // can never claim a request. Claiming happens only via the POSTed form below.
-export default async function ClaimPage({ params }: { params: Promise<{ token: string }> }) {
+// Intro emails go out after the claim response, within this limit (seconds).
+export const maxDuration = 60;
+
+export default async function ClaimPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ clash?: string }>;
+}) {
   const { token } = await params;
+  const { clash } = await searchParams;
   const claimToken = await prisma.claimToken.findUnique({
     where: { token },
     include: {
@@ -44,18 +55,21 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
 
   if (request.status === "CLAIMED" || request.status === "COMPLETED") {
     const wasMe = request.claimedById === member.id;
+    const details = canSeeStudentDetails(claimToken, request);
     return (
       <TokenShell>
         <TokenCard
           icon={wasMe ? "🎉" : "⚡️"}
           title={wasMe ? "You claimed this one" : `Claimed by ${request.claimedBy?.name ?? "another member"}`}
           body={
-            wasMe
-              ? "This request is yours. Check your email for the student's contact details."
-              : "Someone beat you to it this time. The next request could be yours."
+            !wasMe
+              ? "Someone beat you to it this time. The next request could be yours."
+              : details
+                ? "This request is yours. Check your email for the student's contact details."
+                : "This session has ended. All your sessions are on your dashboard."
           }
-          linkHref={wasMe ? `/claim/${token}/claimed` : undefined}
-          linkLabel={wasMe ? "View student details" : undefined}
+          linkHref={details ? `/claim/${token}/claimed` : wasMe ? "/member" : undefined}
+          linkLabel={details ? "View student details" : wasMe ? "Open my dashboard" : undefined}
         />
       </TokenShell>
     );
@@ -99,6 +113,12 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
         <p className="mt-2 text-sm text-muted">
           Hi {member.name.split(" ")[0]}, first member to confirm gets it.
         </p>
+        {clash && (
+          <p role="alert" className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            You already have a session at that time, so this one was not claimed. Give the other
+            one back on your dashboard first if you would rather take this one.
+          </p>
+        )}
 
         <dl className="mt-6 space-y-4 rounded-xl bg-surface p-5">
           <div>

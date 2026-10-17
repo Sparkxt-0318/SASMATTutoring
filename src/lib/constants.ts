@@ -23,10 +23,26 @@ export const STUDENT_EMAIL_DOMAIN = "saschina.org";
 export const MIN_MEETING_MINUTES = 15;
 export const MAX_MEETING_MINUTES = 180;
 
-/** Abuse limits for the public request form. */
+/**
+ * Abuse limits for the public request form. Each request emails every member,
+ * so the overall caps protect the daily email limit (#5). Enforced under a lock
+ * in src/lib/race-safe.ts, so parallel submissions cannot pass them together.
+ */
 export const MAX_ACTIVE_REQUESTS_PER_STUDENT = 3;
 export const MAX_REQUESTS_PER_STUDENT_PER_DAY = 5;
-export const MAX_REQUESTS_PER_HOUR = 30;
+export const MAX_REQUESTS_PER_HOUR = 8;
+export const MAX_REQUESTS_PER_DAY = 20;
+
+/** Member sign-in codes. A 6-digit code is only safe because guessing is capped hard. */
+export const CODE_TTL_MINUTES = 10;
+/** Wrong guesses allowed on one code before it is destroyed. */
+export const MAX_CODE_ATTEMPTS = 5;
+/** Minimum gap between two code requests for the same address. */
+export const CODE_COOLDOWN_SECONDS = 45;
+export const MAX_CODES_PER_15_MIN = 3;
+export const MAX_CODES_PER_DAY = 8;
+/** Site-wide: code emails per hour across everyone, so a script cannot drain the mailbox. */
+export const MAX_CODES_PER_HOUR_SITE = 40;
 
 /**
  * Where "Check Your Credits" sends people (the club's credit spreadsheet). It

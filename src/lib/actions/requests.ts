@@ -4,21 +4,29 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendRequestBlast } from "@/lib/blast";
-import {
-  MAX_ACTIVE_REQUESTS_PER_STUDENT,
-  MAX_REQUESTS_PER_HOUR,
-  MAX_REQUESTS_PER_STUDENT_PER_DAY,
-  shanghaiDateTime,
-} from "@/lib/constants";
+import { sendAdminAlert, sendEmail } from "@/lib/email";
+import { insertRequest } from "@/lib/race-safe";
+import { MAX_ACTIVE_REQUESTS_PER_STUDENT, appUrl, shanghaiDateTime } from "@/lib/constants";
 import { requestSchema } from "@/lib/validation";
+import { adminAlertEmail, requestConfirmEmail } from "@/emails/templates";
 
 export interface RequestFormState {
   errors: Record<string, string>;
   values: Record<string, string>;
 }
 
-const DUPLICATE_WINDOW_MINUTES = 10;
+const LIMIT_MESSAGES = {
+  active: `You already have ${MAX_ACTIVE_REQUESTS_PER_STUDENT} requests waiting. Please wait for a tutor to reach out, or ask an officer for help.`,
+  "student-day": "You have sent several requests today already. Please try again tomorrow.",
+  busy: "We are getting a lot of requests right now. Please try again in a little while.",
+};
 
+/**
+ * The public request form. The request is saved as UNCONFIRMED and the student
+ * is emailed a confirmation link (#4): nothing reaches members until they press
+ * it, so nobody can request tutoring in someone else's name. The duplicate check,
+ * abuse limits and insert are race-safe (see insertRequest).
+ */
 export async function createRequest(
   _prev: RequestFormState,
   formData: FormData,
@@ -51,83 +59,55 @@ export async function createRequest(
   }
 
   const { meetingDate, startTime, endTime, receivedTeacherHelp, ...rest } = parsed.data;
+  const request = {
+    ...rest,
+    meetingStart: shanghaiDateTime(meetingDate, startTime),
+    meetingEnd: shanghaiDateTime(meetingDate, endTime),
+  };
+  const outcome = await insertRequest({ ...request, receivedTeacherHelp: receivedTeacherHelp === "Yes" });
+  if (!outcome.ok) return { errors: { form: LIMIT_MESSAGES[outcome.reason] }, values: raw };
 
-  // Duplicate guard: same student + course submitted moments ago → treat as
-  // the same request instead of blasting members twice.
-  const recentDuplicate = await prisma.tutoringRequest.findFirst({
-    where: {
-      studentEmail: rest.studentEmail,
-      subject: rest.subject,
-      status: { in: ["OPEN", "CLAIMED"] },
-      createdAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MINUTES * 60 * 1000) },
-    },
-  });
-  if (recentDuplicate) {
-    redirect("/request/success");
+  // An exact retry of a waiting request is the same request: no second email.
+  if (!outcome.duplicate) {
+    const { confirmToken } = outcome;
+    after(async () => {
+      const mail = requestConfirmEmail(request, `${appUrl()}/request/confirm/${confirmToken}`);
+      try {
+        await sendEmail({ to: rest.studentEmail, subject: mail.subject, html: mail.html });
+      } catch (err) {
+        console.error("Request confirmation email failed:", err);
+        const alert = adminAlertEmail(
+          "A student's confirmation email failed",
+          `${rest.studentName} (${rest.studentEmail}) asked for ${rest.subject} help, but the email with their confirmation link could not be sent (${String(err)}). The request waits under "Awaiting student" in the Requests tab; you may want to contact them.`,
+        );
+        await sendAdminAlert(alert.subject, alert.html);
+      }
+    });
   }
-
-  // Abuse limits. Anyone can type any school address, so cap how many requests
-  // one address can have, and how many arrive overall, before members get emailed.
-  const now = Date.now();
-  const [activeForStudent, dayForStudent, hourOverall] = await Promise.all([
-    prisma.tutoringRequest.count({
-      where: {
-        studentEmail: rest.studentEmail,
-        status: { in: ["OPEN", "CLAIMED"] },
-        meetingEnd: { gt: new Date(now) },
-      },
-    }),
-    prisma.tutoringRequest.count({
-      where: {
-        studentEmail: rest.studentEmail,
-        createdAt: { gte: new Date(now - 24 * 60 * 60 * 1000) },
-      },
-    }),
-    prisma.tutoringRequest.count({
-      where: { createdAt: { gte: new Date(now - 60 * 60 * 1000) } },
-    }),
-  ]);
-  if (activeForStudent >= MAX_ACTIVE_REQUESTS_PER_STUDENT) {
-    return {
-      errors: {
-        form: `You already have ${MAX_ACTIVE_REQUESTS_PER_STUDENT} requests waiting. Please wait for a tutor to reach out, or ask an officer for help.`,
-      },
-      values: raw,
-    };
-  }
-  if (dayForStudent >= MAX_REQUESTS_PER_STUDENT_PER_DAY) {
-    return {
-      errors: { form: "You have sent several requests today already. Please try again tomorrow." },
-      values: raw,
-    };
-  }
-  if (hourOverall >= MAX_REQUESTS_PER_HOUR) {
-    return {
-      errors: { form: "We are getting a lot of requests right now. Please try again in a little while." },
-      values: raw,
-    };
-  }
-
-  const request = await prisma.tutoringRequest.create({
-    data: {
-      ...rest,
-      meetingStart: shanghaiDateTime(meetingDate, startTime),
-      meetingEnd: shanghaiDateTime(meetingDate, endTime),
-      receivedTeacherHelp: receivedTeacherHelp === "Yes",
-    },
-  });
-
-  // Email the members after the student has their confirmation page. Sending
-  // 30 emails can take a while, and the student should not wait for it (or see
-  // an error) if the mail server is slow. Members whose email fails stay
-  // flagged in the admin Requests tab.
-  after(async () => {
-    try {
-      await sendRequestBlast(request.id);
-    } catch (err) {
-      console.error("Request blast crashed:", err);
-    }
-  });
 
   redirect("/request/success");
+}
+
+/**
+ * The student pressed "Confirm my request" (a POST, never on GET, because email
+ * scanners open links). Only now are members emailed, after the response.
+ */
+export async function confirmRequest(token: string): Promise<void> {
+  const now = new Date();
+  const confirmed = await prisma.tutoringRequest.updateManyAndReturn({
+    where: { confirmToken: token, status: "UNCONFIRMED", meetingStart: { gt: now } },
+    data: { status: "OPEN", confirmedAt: now },
+    select: { id: true },
+  });
+  if (confirmed.length === 1) {
+    const requestId = confirmed[0].id;
+    after(async () => {
+      try {
+        await sendRequestBlast(requestId);
+      } catch (err) {
+        console.error("Request blast crashed:", err);
+      }
+    });
+  }
+  redirect(`/request/confirm/${token}`);
 }
