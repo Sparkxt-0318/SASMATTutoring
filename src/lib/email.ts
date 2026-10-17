@@ -1,6 +1,14 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { Resend } from "resend";
 import { parseEmailList } from "./email-list";
+import {
+  EmailBudgetError,
+  claimBudgetAlert,
+  dailyEmailLimit,
+  reserveEmails,
+  type EmailKind,
+} from "./email-budget";
+import { adminAlertEmail } from "@/emails/templates";
 
 export interface OutboundEmail {
   to: string;
@@ -105,6 +113,7 @@ export function emailStatus() {
     from: fromAddress(),
     smtpHost: emailProvider() === "smtp" ? smtpSettings().host || "(not set)" : null,
     dryRun: isDryRun(),
+    dailyLimit: dailyEmailLimit(emailProvider()),
     override: process.env.TEST_EMAIL_OVERRIDE || null,
     reportEmail: reportEmail(),
     alertRecipients: alertRecipients(),
@@ -154,8 +163,10 @@ function openSmtp(pool: boolean): Transporter {
   return nodemailer.createTransport({
     host,
     port,
-    // Port 465 uses TLS from the start; 587 upgrades with STARTTLS.
+    // Port 465 uses TLS from the start; other ports must upgrade with STARTTLS
+    // before the password is sent, or the send fails (never falls back to plain text).
     secure: port === 465,
+    requireTLS: port !== 465,
     auth: { user, pass },
     pool,
     maxConnections: 3,
@@ -175,18 +186,35 @@ async function sendViaSmtp(transport: Transporter, email: OutboundEmail): Promis
     attachments: email.attachments?.map((a) => ({
       filename: a.filename,
       content: a.content,
-      contentType: "text/csv; charset=utf-8",
+      contentType: a.filename.endsWith(".json") ? "application/json; charset=utf-8" : "text/csv; charset=utf-8",
     })),
   });
 }
 
+/**
+ * Count real sends against today's budget (see email-budget.ts) or throw
+ * EmailBudgetError. The first time blasts are refused on a day, officers are told.
+ */
+async function reserveOrThrow(count: number, kind: EmailKind): Promise<void> {
+  if (await reserveEmails(count, kind, dailyEmailLimit(emailProvider()))) return;
+  if (kind === "bulk" && (await claimBudgetAlert())) {
+    const alert = adminAlertEmail(
+      "Member emails paused for today",
+      "The site has used most of today's email limit, so new request emails to members are paused until tomorrow (UTC). Sign-in codes and intro emails still go out. Requests stay in the Requests tab: press Resend blast tomorrow, or assign a tutor directly.",
+    );
+    await sendAdminAlert(alert.subject, alert.html);
+  }
+  throw new EmailBudgetError(kind);
+}
+
 /** Send a single email. Throws on failure; callers decide how to handle it. */
-export async function sendEmail(email: OutboundEmail): Promise<void> {
+export async function sendEmail(email: OutboundEmail, kind: EmailKind = "essential"): Promise<void> {
   const finalEmail = applyOverride(email);
   if (isDryRun()) {
     logDryRun([finalEmail]);
     return;
   }
+  await reserveOrThrow(1, kind);
   if (emailProvider() === "smtp") {
     const transport = openSmtp(false);
     try {
@@ -213,19 +241,23 @@ export async function sendEmail(email: OutboundEmail): Promise<void> {
   }
 }
 
+/** Resend's batch endpoint takes at most this many emails per call. */
+const RESEND_BATCH_SIZE = 100;
+
 /**
  * Send many emails (used for the member blast). Returns the indexes that were
- * sent successfully. Resend sends one all-or-nothing API call; SMTP sends each
- * message separately, so some can succeed while others fail. Throws only when
- * nothing could be sent.
+ * sent successfully. Resend sends all-or-nothing calls of up to 100; SMTP sends
+ * each message separately. Either way some can succeed while others fail.
+ * Throws only when nothing could be sent.
  */
-export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
+export async function sendBatch(emails: OutboundEmail[], kind: EmailKind = "essential"): Promise<number[]> {
   if (emails.length === 0) return [];
   const finalEmails = emails.map(applyOverride);
   if (isDryRun()) {
     logDryRun(finalEmails);
     return emails.map((_, i) => i);
   }
+  await reserveOrThrow(emails.length, kind);
 
   if (emailProvider() === "smtp") {
     const transport = openSmtp(true);
@@ -246,20 +278,33 @@ export async function sendBatch(emails: OutboundEmail[]): Promise<number[]> {
     return sent;
   }
 
-  const { error } = await resend().batch.send(
-    finalEmails.map((email) => ({
-      from: fromAddress(),
-      to: email.to,
-      subject: email.subject,
-      html: email.html,
-      text: htmlToText(email.html),
-      replyTo: email.replyTo,
-    })),
-  );
-  if (error) {
-    throw new Error(`Resend batch error: ${error.name}: ${error.message}`);
+  const sent: number[] = [];
+  let firstError: Error | null = null;
+  for (let start = 0; start < finalEmails.length; start += RESEND_BATCH_SIZE) {
+    const chunk = finalEmails.slice(start, start + RESEND_BATCH_SIZE);
+    const { error } = await resend().batch.send(
+      chunk.map((email) => ({
+        from: fromAddress(),
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+        text: htmlToText(email.html),
+        replyTo: email.replyTo,
+        attachments: email.attachments?.map((a) => ({
+          filename: a.filename,
+          content: Buffer.from(a.content, "utf-8"),
+        })),
+      })),
+    );
+    if (error) {
+      firstError ??= new Error(`Resend batch error: ${error.name}: ${error.message}`);
+      console.error(`Resend batch: emails ${start} to ${start + chunk.length - 1} failed`, error);
+    } else {
+      sent.push(...chunk.map((_, i) => start + i));
+    }
   }
-  return emails.map((_, i) => i);
+  if (sent.length === 0 && firstError) throw firstError;
+  return sent;
 }
 
 /** The officer report inbox (REPORT_EMAIL), cleaned up, or null when it is not set. */

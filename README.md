@@ -2,7 +2,8 @@
 
 Peer math tutoring platform for **Mu Alpha Theta** (MAT), SAS's math honor society.
 
-**How it works:** a student requests help through the public form → every active MAT
+**How it works:** a student requests help through the public form and confirms it from
+the email we send them (so nobody can request help in someone else's name) → every active MAT
 member gets an email with a personal one-click **Claim** link → the first member to
 confirm becomes the tutor (student and tutor are introduced by email). Students
 choose the exact date and start/end time of the session when they request it.
@@ -10,8 +11,8 @@ choose the exact date and start/end time of the session when they request it.
 week (the Hours tab), and record the minutes each tutor earned. Each member's
 progress toward the hours goal is shown as a contribution-style grid (green =
 done, blank = still to fill). A weekly digest with the all-time combined total
-and per-member hours goes to the officer report inbox every Friday night, with a CSV
-backup of the whole system attached.
+and per-member hours goes to the officer report inbox every Friday night, with a full
+JSON backup and CSVs attached.
 
 ## Stack
 
@@ -41,15 +42,20 @@ Useful commands:
 | Command | What it does |
 | --- | --- |
 | `npm run db:studio` | Browse/edit the database in Prisma Studio |
-| `npm run race-test` | Prove first-click-wins claiming is race-safe |
+| `npm test` | Unit tests (no database needed) |
+| `npm run race-test` | Fire parallel claims, sign-in codes and requests at the database and check every limit holds |
 | `npm run build` | Production build (also runs `prisma generate`) |
 | `npm run lint` | ESLint |
 
 ## How claiming stays race-safe
 
-`claimRequest` (src/lib/actions/claims.ts) issues a single conditional update,
-`UPDATE ... WHERE id = ? AND status = 'OPEN'`, so when several members click at
-once, Postgres lets exactly one through; everyone else sees "already claimed".
+Every claim (email link, member dashboard, officer Assign) goes through `claimForMember`
+(`src/lib/claiming.ts`), which calls `claimRequestRow` in `src/lib/race-safe.ts`. That
+issues a single conditional update, `UPDATE ... WHERE id = ? AND status = 'OPEN'`, so when
+several members click at once, Postgres lets exactly one through; everyone else sees
+"already claimed". A per-member Postgres advisory lock also stops one member from holding
+two sessions at the same time. The other count-then-write steps (request form limits,
+sign-in codes) use the same kind of lock, and `npm run race-test` checks all of them.
 The claim page performs **zero writes on GET**: email scanners that prefetch
 links can never claim a request, because claiming requires pressing the confirm
 button (a POST).
@@ -61,30 +67,38 @@ button (a POST).
 | `/` | Students | Landing page |
 | `/request` | Students | Request form: `@saschina.org` email, grade, course, topic, teacher-help survey question, meeting date + start/end time |
 | `/member/login` | Members on the list | Type your email, get a one-time PIN by email, sign in. Dashboard: own progress grid, open requests to claim, my sessions with student contact |
-| `/claim/<token>` | Members | Personal claim link from the blast email (no sign in needed; also shows the member's progress grid) |
+| `/request/confirm/<token>` | Students | Confirm link from the student's email; members are emailed only after this. Also shows the request's status later |
+| `/claim/<token>` | Members | Personal claim link from the blast email (no sign in needed). The student's contact details show only while that member holds the session |
 | `/admin` | Officers | Requests · Hours (weekend credit review) · Members roster · Leaderboard (progress grids) + CSV |
-
-Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 
 **Member list:** the admin **Members** tab is the member list. Everyone active there
 gets the request emails (with a personal Claim link that needs no sign in) and can sign
 in. Nobody else can. Add people one at a time, or use **Import a member list**: upload a
 CSV (the club attendance sheet works as is, "Name, email" files too) or paste names and
 emails. Tick "Make this the whole member list" to deactivate everyone who is not in the
-file. Deactivating someone stops their emails and signs them out at once.
+file (refused if any line could not be read, so a typo never removes someone). Deactivating
+someone stops their emails, signs them out at once, and gives their upcoming sessions back
+to the other members (the student is told).
+
+**Testing the member view:** on the Members tab, "Test the member view" makes a one-time
+code for any active member, shown only to the officer and never emailed. Enter it at
+`/member/login` on any device.
 
 **Member sign in (emailed one-time PIN only):** there are no member passwords and no
 sign-up page. A member types their email, gets a fresh random 6-digit code by email, and
 enters it. The code works once, expires after 10 minutes, and is stored only as a keyed
 hash. Five wrong guesses destroy it, and a member can request at most 3 codes per 15
-minutes and 8 per day. Emails that are not on the list are refused and get no code. It
-needs working email (see the Gmail section below).
+minutes and 8 per day (and the whole site at most 40 per hour). Addresses that are not on
+the list get no code, but see the same page as members, so the form never reveals who is a
+member. It needs working email (see the Gmail section below).
 
 `OTP_LOGIN_EMAILS` (comma separated, usually empty) lists extra addresses that may sign in
 even when they are not on the list yet, for example an officer testing the member pages.
 The first time one of them signs in, the site asks for a name and adds them to the list.
 
-Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
+Officers sign in at `/admin` with the shared `ADMIN_PASSWORD` (use at least 12
+characters; changing it signs every officer out). Sign in is limited to 5 tries per 15
+minutes from one network, and officers are alerted if many tries fail.
 
 ## Deploying (officer runbook)
 
@@ -105,12 +119,16 @@ Officers sign in at `/admin` with the shared `ADMIN_PASSWORD`.
 5. Add the real member list in `/admin` → Members (Import a member list takes the
    attendance CSV). Never commit real emails to the repository or the seed file.
 
-**Cron jobs** (already configured in `vercel.json`, times are UTC):
+**Cron jobs** (already configured in `vercel.json`, times are UTC; on the Hobby plan Vercel
+only promises the hour, so a job set for 22:30 runs some time between 22:00 and 22:59):
 
 - `/api/cron/weekly-report`: Fridays 12:00 UTC (Friday 20:00 Shanghai): hours digest to
-  `REPORT_EMAIL` with three CSV backups attached (members, every session, hours)
-- `/api/cron/daily`: 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
-  meeting time has already started, and sends an alert only when something needs
+  `REPORT_EMAIL` with the complete JSON backup plus three CSVs attached (members, every
+  session, hours). Survey answers are left out of emailed files.
+- `/api/cron/daily`: about 22:30 UTC (06:30 Shanghai): expires unclaimed requests whose
+  meeting time has already started (the student is told), tells students whose session
+  starts within 24 hours that we are still looking, tidies old unconfirmed requests,
+  sign-in codes and claim links, and sends an alert only when something needs
   attention (a request starting within 24 hours with no tutor, or member emails that
   did not go out)
 
@@ -137,24 +155,40 @@ Other mailboxes work too: also set `SMTP_HOST` (Microsoft 365 is `smtp.office365
 many schools turn off this kind of sign-in) and `SMTP_PORT`. If a test fails, the Email tab
 says why. Gmail sends up to about 500 emails a day.
 
-**Email volume:** each request costs roughly `members + 2` emails. Resend's free
-tier is 100/day and 3,000/month, so with ~30 members that's about 3 requests per day.
-If the club outgrows that, upgrade Resend or trim the roster blast.
+**Email volume:** each request costs roughly `members + 3` emails. The site counts every
+email it sends per day (UTC) against `EMAIL_DAILY_LIMIT` (default 450 for SMTP/Gmail, 95
+for Resend's free tier). Member request emails pause at 80% of it, so sign-in codes and
+student emails always have room left; officers get one alert when that happens, and the
+paused requests show "Blast incomplete" until you press Resend blast. The Email tab shows
+today's count.
 
 ## Safety limits and failure handling
 
-- **Spam on the request form:** one student address can have at most 3 waiting requests
-  and 5 per day, and the whole site accepts at most 30 requests per hour. Limits live in
+- **Spam on the request form:** nothing goes to members until the student confirms from
+  their school inbox. One student address can have at most 3 waiting requests and 5 per
+  day, and the whole site accepts at most 8 requests per hour and 20 per day. Pressing
+  Submit twice saves one request. Limits live in
   `src/lib/constants.ts`.
 - **Tutor can't make it:** a member can give a claimed session back from their dashboard
   (only before it starts), and officers can press Reopen in the Requests tab. The student is
-  told, and every member is alerted again.
+  told, and every member is alerted again. Reopen disappears once the meeting starts.
+- **Mistakes are undoable:** Cancel, Didn't happen, Undo credit and Deactivate all ask for
+  a second click, and the Hours tab lists cancelled sessions from the last 30 days with
+  Restore.
 - **Mail problems never lose a request:** the request is saved first, the members' emails are
   sent after the student sees the confirmation, and anyone who did not get an email stays
   flagged ("Blast incomplete") until you press Resend blast. Check the Requests tab if
   email has been unreliable.
-- **Backups:** Leaderboard has "Export all sessions", a CSV of every request, tutor and
-  credit. Download it now and then (for example at the end of each term).
+- **Backups:** Leaderboard has "Full backup (JSON)", the complete restorable record
+  (members with active state, every request with exact times and topics, every credit),
+  and "Export all sessions", a readable CSV. Download the JSON now and then (for example
+  at the end of each term).
+- **Restoring from a backup:** use a `mat-backup-*.json` file (the Leaderboard download
+  or the weekly report attachment). Point `DATABASE_URL`/`DIRECT_URL` at an EMPTY
+  database, run `npm run db:deploy` to apply migrations, then
+  `npm run restore -- path/to/mat-backup-YYYY-MM-DD.json`. It refuses any database that
+  already has members or requests. Ids, dates and credits come back exactly; members
+  sign in again with a new PIN, and unconfirmed requests lose their confirm link.
 - **Cron routes** refuse every call if `CRON_SECRET` is not set.
 
 ## Records

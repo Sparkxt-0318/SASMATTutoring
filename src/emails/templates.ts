@@ -123,10 +123,118 @@ export function tutorReleasedEmail(request: RequestInfo, tutorName: string) {
   return { subject, html };
 }
 
+/** 3c. To the student right after the form: nothing reaches members until they confirm (#4). */
+export function requestConfirmEmail(request: RequestInfo, confirmUrl: string) {
+  const subject = `Confirm your MAT tutoring request`;
+  const html = emailShell(
+    subject,
+    [
+      heading("One more step"),
+      paragraph(
+        `Hi ${escapeHtml(request.studentName)}, press the button to confirm your <strong>${escapeHtml(request.subject)}</strong> request. We only tell our tutors once you confirm.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Meeting time", meetingLabel(request)],
+      ]),
+      button("Confirm my request", confirmUrl),
+      paragraph(
+        `<span style="font-size:13px;color:#86868b;">The same link shows how your request is going. If you did not ask for tutoring, ignore this email and nothing will happen.</span>`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
+/** 3d. To the student when an officer cancels a session that has not happened yet (#7). */
+export function requestCancelledStudentEmail(request: RequestInfo) {
+  const subject = `Your MAT tutoring request was cancelled`;
+  const html = emailShell(
+    subject,
+    [
+      heading("Your request was cancelled"),
+      paragraph(
+        `Hi ${escapeHtml(request.studentName)}, a club officer cancelled your <strong>${escapeHtml(request.subject)}</strong> session, so no tutor will meet you then.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Meeting time", meetingLabel(request)],
+      ]),
+      paragraph(
+        `If you still need help, <a href="${appUrl()}/request" style="color:#0071e3;">send a new request</a>, or reply to this email to reach an officer.`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
+/** 3e. To the tutor when an officer cancels a session they had claimed (#7). */
+export function requestCancelledTutorEmail(request: RequestInfo, tutorName: string) {
+  const subject = `Cancelled: ${request.subject} with ${request.studentName}`;
+  const html = emailShell(
+    subject,
+    [
+      heading("Session cancelled"),
+      paragraph(
+        `Hi ${escapeHtml(tutorName.split(" ")[0])}, a club officer cancelled this session. You do not need to meet ${escapeHtml(request.studentName)}, and the student has been told.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Meeting time", meetingLabel(request)],
+      ]),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
+/** 3f. To the student when nobody claimed their request before it started (#7). */
+export function requestExpiredEmail(request: RequestInfo) {
+  const subject = `No MAT tutor could make your requested time`;
+  const html = emailShell(
+    subject,
+    [
+      heading("Sorry, no tutor could make it"),
+      paragraph(
+        `Hi ${escapeHtml(request.studentName)}, none of our tutors could make the time you asked for, so your <strong>${escapeHtml(request.subject)}</strong> request has closed.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Requested time", meetingLabel(request)],
+      ]),
+      paragraph(
+        `Please <a href="${appUrl()}/request" style="color:#0071e3;">ask again with another time</a>, or reply to this email and an officer will help.`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
+/** 3g. Early warning to the student: the session starts within a day and has no tutor yet (#7). */
+export function stillLookingEmail(request: RequestInfo) {
+  const subject = `Still looking for a tutor for your MAT session`;
+  const html = emailShell(
+    subject,
+    [
+      heading("Still looking for a tutor"),
+      paragraph(
+        `Hi ${escapeHtml(request.studentName)}, nobody has claimed your <strong>${escapeHtml(request.subject)}</strong> session yet, and it is coming up soon. We will email you as soon as a tutor claims it.`,
+      ),
+      detailRows([
+        ["Course", request.subject],
+        ["Requested time", meetingLabel(request)],
+      ]),
+      paragraph(
+        `If another time would work too, <a href="${appUrl()}/request" style="color:#0071e3;">send a second request</a>, or reply to this email to reach an officer.`,
+      ),
+    ].join(""),
+  );
+  return { subject, html };
+}
+
 /** One-time sign-in PIN for a member. */
 export function loginCodeEmail(name: string, code: string, minutes: number) {
-  // The code leads the subject so it shows in phone notifications.
-  const subject = `${code} is your MAT Tutoring sign-in code`;
+  // No digits in the subject: it shows on lock screens and in notifications (#29).
+  const subject = `Your MAT Tutoring sign-in code`;
   const html = emailShell(
     subject,
     [
@@ -191,7 +299,7 @@ export function weeklyDigestEmail(data: DigestData) {
           )
         : "",
       paragraph(
-        `<span style="font-size:13px;color:#86868b;">Your weekly backup is attached: the member list, every tutoring session, and the hours totals. Keep these emails, or save the files somewhere safe.</span>`,
+        `<span style="font-size:13px;color:#86868b;">Your weekly backup is attached: the complete JSON backup file (<code>npm run restore</code> loads it into an empty database), plus readable CSVs of the members, every session, and the hours totals. Keep these emails, or save the files somewhere safe.</span>`,
       ),
       `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;">
         <thead>

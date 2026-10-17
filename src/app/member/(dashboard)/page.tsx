@@ -62,6 +62,10 @@ const NOTICES: Record<string, { text: string; className: string }> = {
     text: "Someone else claimed that one first. Another request will come along soon.",
     className: "bg-amber-50 text-amber-700",
   },
+  overlap: {
+    text: "You already have a session at that time, so this one was not claimed. Leave it for another member.",
+    className: "bg-amber-50 text-amber-700",
+  },
 };
 
 function plural(count: number, word: string): string {
@@ -148,7 +152,7 @@ export default async function MemberDashboardPage({
         </p>
       </div>
 
-      {banner && <p className={`rounded-2xl px-5 py-4 text-sm ${banner.className}`}>{banner.text}</p>}
+      {banner && <p role="status" className={`rounded-2xl px-5 py-4 text-sm ${banner.className}`}>{banner.text}</p>}
 
       {!hasTutored && <HowItWorks sender={senderAddress()} folded={false} />}
 

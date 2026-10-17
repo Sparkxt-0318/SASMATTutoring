@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep visited dashboard tabs for 30 seconds so switching back is instant (#13).
+  // Officer and member actions call revalidatePath, which refreshes them after a change.
+  experimental: { staleTimes: { dynamic: 30 } },
   async headers() {
     return [
       {
