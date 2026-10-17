@@ -139,6 +139,9 @@ function logDryRun(emails: OutboundEmail[]): void {
     console.log(
       `[email dry-run] to=${email.to} replyTo=${email.replyTo ?? "-"} subject="${email.subject}" html=${email.html.length} bytes attachments=${email.attachments?.length ?? 0}`,
     );
+    // Locally, show the text too, so sign-in codes and confirm links can be copied.
+    // Never in production, where logs are kept and codes must stay secret.
+    if (process.env.NODE_ENV !== "production") console.log(htmlToText(email.html));
   }
 }
 
