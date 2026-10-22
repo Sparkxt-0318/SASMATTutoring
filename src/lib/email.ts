@@ -268,6 +268,14 @@ export function reportEmail(): string | null {
 }
 
 /**
+ * Who receives the weekly hours report and backup files: REPORT_EMAIL, plus
+ * everyone in WEEKLY_REPORT_EMAILS (comma separated). Each person gets their own copy.
+ */
+export function weeklyReportRecipients(): string[] {
+  return [...new Set([...parseEmailList(process.env.REPORT_EMAIL), ...parseEmailList(process.env.WEEKLY_REPORT_EMAILS)])];
+}
+
+/**
  * Who receives alert emails (failures, "needs attention", expired requests):
  * REPORT_EMAIL, plus everyone in EXTRA_ALERT_EMAILS (comma separated). The
  * weekly report and backup files go to REPORT_EMAIL only.

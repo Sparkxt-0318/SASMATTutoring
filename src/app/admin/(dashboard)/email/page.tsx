@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { emailStatus } from "@/lib/email";
+import { emailStatus, weeklyReportRecipients } from "@/lib/email";
 import { otpAllowedEmails } from "@/lib/login-code";
 import { prisma } from "@/lib/db";
 import { appUrl } from "@/lib/constants";
@@ -25,7 +25,7 @@ export default async function AdminEmailPage() {
     ["Sending method", status.provider === "smtp" ? "SMTP (a normal mailbox)" : "Resend"],
     ["Sent from", status.from],
     ...(status.smtpHost ? ([["Mail server", status.smtpHost]] as Array<[string, string]>) : []),
-    ["Weekly report and backup go to", status.reportEmail ?? "(not set)"],
+    ["Weekly report and backup go to", weeklyReportRecipients().join(", ") || "(not set: set REPORT_EMAIL)"],
     [
       "Alerts go to",
       status.alertRecipients.length > 0 ? status.alertRecipients.join(", ") : "(nobody: set REPORT_EMAIL)",
