@@ -3,6 +3,7 @@ export const COURSES = [
   "IM2",
   "IM3",
   "IM3+",
+  "IM3+E",
   "AP PreCalculus",
   "AP Calculus BC",
   "IB Math AA SL",
