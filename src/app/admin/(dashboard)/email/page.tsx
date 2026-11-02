@@ -85,7 +85,7 @@ export default async function AdminEmailPage() {
       <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold tracking-tight">Send a test</h2>
         <p className="mt-1 mb-5 text-sm text-muted">
-          Sends one email to the weekly report address above.
+          Sends a test email to everyone on the weekly report list above, one copy each.
         </p>
         <TestEmailForm kind="email" />
       </div>

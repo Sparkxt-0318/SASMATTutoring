@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth";
-import { alertRecipients, isDryRun, reportEmail, sendBatch, sendEmail } from "@/lib/email";
+import { alertRecipients, isDryRun, sendBatch, weeklyReportRecipients } from "@/lib/email";
 import { explainEmailError } from "@/lib/email-errors";
 import { adminAlertEmail } from "@/emails/templates";
 
@@ -21,21 +21,30 @@ function failure(err: unknown): TestEmailState {
     : { ok: false, message: "The email could not be sent.", detail: raw };
 }
 
-/** Sends one test email to the report address and reports exactly what happened. */
+/** Sends a test email to EVERYONE on the weekly report list (REPORT_EMAIL plus WEEKLY_REPORT_EMAILS), one copy each. */
 export async function sendTestEmail(): Promise<TestEmailState> {
   await requireAdmin();
-  const to = reportEmail();
-  if (!to) return { ok: false, message: "REPORT_EMAIL is not set, so there is nowhere to send the test." };
+  const recipients = weeklyReportRecipients();
+  if (recipients.length === 0) {
+    return { ok: false, message: "REPORT_EMAIL is not set, so there is nowhere to send the test." };
+  }
 
   try {
     const { subject, html } = adminAlertEmail(
       "Test email",
       "If you can read this, the MAT tutoring site can send email.",
     );
-    await sendEmail({ to, subject, html });
-    return isDryRun()
-      ? { ok: true, message: "Dry run is on, so nothing was really sent. Set EMAIL_DRY_RUN to false to send." }
-      : { ok: true, message: `Sent. Check the inbox (and spam folder) of ${process.env.TEST_EMAIL_OVERRIDE || to}.` };
+    const sent = await sendBatch(recipients.map((to) => ({ to, subject, html })));
+    if (isDryRun()) {
+      return { ok: true, message: "Dry run is on, so nothing was really sent. Set EMAIL_DRY_RUN to false to send." };
+    }
+    const missed = recipients.filter((_, i) => !sent.includes(i));
+    return missed.length === 0
+      ? { ok: true, message: `Sent to all ${recipients.length}: ${recipients.join(", ")}. Ask each person to check their inbox and spam folder.` }
+      : {
+          ok: false,
+          message: `Sent to ${sent.length} of ${recipients.length}. These did not go through: ${missed.join(", ")}.`,
+        };
   } catch (err) {
     return failure(err);
   }
