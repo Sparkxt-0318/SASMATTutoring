@@ -6,6 +6,7 @@ export const COURSES = [
   "IM3+E",
   "AP PreCalculus",
   "AP Calculus BC",
+  "AP Statistics",
   "IB Math AA SL",
   "IB Math AA HL",
   "IB Math AI SL",
