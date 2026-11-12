@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,8 +23,20 @@ export function checkAdminPassword(candidate: string): boolean {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Short keyed fingerprint of the current ADMIN_PASSWORD, carried in every officer
+ * session. Changing the password changes it, which signs every officer out
+ * without touching member sessions (#3).
+ */
+function passwordVersion(): string {
+  return createHmac("sha256", secretKey())
+    .update(`admin-password:${process.env.ADMIN_PASSWORD ?? ""}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
 export async function createAdminSession(): Promise<void> {
-  const token = await new SignJWT({ role: "admin" })
+  const token = await new SignJWT({ role: "admin", pv: passwordVersion() })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
@@ -51,13 +63,13 @@ export async function isAdmin(): Promise<boolean> {
   if (!token) return false;
   try {
     const { payload } = await jwtVerify(token, secretKey());
-    return payload.role === "admin";
+    return payload.role === "admin" && payload.pv === passwordVersion();
   } catch {
     return false;
   }
 }
 
-/** Call at the top of every admin page/layout AND every admin server action. */
+/** Call at the top of every admin page, layout, route AND server action. */
 export async function requireAdmin(): Promise<void> {
   if (!(await isAdmin())) {
     redirect("/admin/login");

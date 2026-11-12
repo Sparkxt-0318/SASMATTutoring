@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { canSeeStudentDetails } from "@/lib/claim-access";
 import { formatMeeting, formatMinutes, meetingMinutes } from "@/lib/constants";
 import { TokenShell, InvalidTokenCard } from "@/components/TokenShell";
 
@@ -16,10 +18,10 @@ export default async function ClaimedPage({ params }: { params: Promise<{ token:
     include: { request: true, member: true },
   });
 
-  // Only the winning member's token may view the student's contact details.
-  if (!claimToken || claimToken.request.claimedById !== claimToken.memberId) {
-    return <InvalidTokenCard />;
-  }
+  if (!claimToken) return <InvalidTokenCard />;
+  // Only an active winner, while the session is still ahead. Anything else: the
+  // claim page explains the real status.
+  if (!canSeeStudentDetails(claimToken, claimToken.request)) redirect(`/claim/${token}`);
 
   const { request } = claimToken;
 

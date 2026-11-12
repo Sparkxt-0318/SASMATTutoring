@@ -24,14 +24,19 @@ export async function buildHoursCsv(): Promise<string> {
   ].join("\n");
 }
 
-/** Every request ever made, with tutor and credit. The main record and backup. */
-export async function buildSessionsCsv(): Promise<string> {
+/**
+ * Every request ever made, with tutor and credit. A readable record; the
+ * restorable backup is the JSON in backup.ts. includeSurvey adds the officer-only
+ * "Teacher helped first" column, so keep it false for anything emailed.
+ */
+export async function buildSessionsCsv(options: { includeSurvey: boolean }): Promise<string> {
   const requests = await prisma.tutoringRequest.findMany({
     orderBy: { createdAt: "asc" },
     include: { claimedBy: true, credit: true },
   });
   return [
-    "Requested,Student,Student email,Grade,Course,Meeting,Booked minutes,Status,Tutor,Tutor email,Credited minutes,Teacher helped first",
+    "Requested,Student,Student email,Grade,Course,Meeting,Booked minutes,Status,Tutor,Tutor email,Credited minutes" +
+      (options.includeSurvey ? ",Teacher helped first" : ""),
     ...requests.map((r) =>
       csvRow([
         formatDate(r.createdAt),
@@ -45,7 +50,9 @@ export async function buildSessionsCsv(): Promise<string> {
         r.claimedBy?.name,
         r.claimedBy?.email,
         r.credit?.status === "APPROVED" ? r.credit.minutes : "",
-        r.receivedTeacherHelp === null ? "" : r.receivedTeacherHelp ? "Yes" : "No",
+        ...(options.includeSurvey
+          ? [r.receivedTeacherHelp === null ? "" : r.receivedTeacherHelp ? "Yes" : "No"]
+          : []),
       ]),
     ),
   ].join("\n");

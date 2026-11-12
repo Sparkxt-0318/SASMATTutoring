@@ -1,4 +1,5 @@
 const styles: Record<string, { label: string; className: string }> = {
+  UNCONFIRMED: { label: "Awaiting student", className: "bg-surface text-muted" },
   OPEN: { label: "Open", className: "bg-blue-50 text-accent" },
   CLAIMED: { label: "Claimed", className: "bg-amber-50 text-amber-700" },
   COMPLETED: { label: "Completed", className: "bg-green-50 text-green-700" },

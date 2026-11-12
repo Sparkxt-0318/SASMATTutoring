@@ -58,7 +58,25 @@ export function ImportMembersForm() {
           request emails and can no longer sign in. You can reactivate anyone later.
         </span>
       </label>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && (
+        <p role="alert" className="text-sm text-red-600">
+          {state.error}
+        </p>
+      )}
+      {state.rejected && state.rejected.length > 0 && (
+        <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+          <p className="font-medium">
+            {state.rejected.length === 1 ? "1 line was" : `${state.rejected.length} lines were`} not imported:
+          </p>
+          <ul className="mt-2 space-y-1 break-words">
+            {state.rejected.map((row) => (
+              <li key={row.line}>
+                Line {row.line}: {row.text} <span className="text-amber-700/80">({row.reason})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {result && (
         <div className="space-y-1 rounded-xl bg-green-50 p-4 text-sm text-green-700">
           <p>
@@ -72,9 +90,21 @@ export function ImportMembersForm() {
             </p>
           )}
           {result.alreadyListed > 0 && <p>{result.alreadyListed} already on the list.</p>}
+          {result.renamed.length > 0 && (
+            <p>
+              Renamed {result.renamed.length}: {names(result.renamed)}.
+            </p>
+          )}
           {result.deactivated.length > 0 && (
             <p>
               Deactivated {result.deactivated.length}: {names(result.deactivated)}.
+            </p>
+          )}
+          {result.sessionsReleased > 0 && (
+            <p>
+              {result.sessionsReleased === 1
+                ? "1 upcoming session went back to the pool."
+                : `${result.sessionsReleased} upcoming sessions went back to the pool.`}
             </p>
           )}
         </div>

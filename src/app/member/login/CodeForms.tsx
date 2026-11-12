@@ -44,7 +44,7 @@ export function CodeRequestForm() {
           />
         </>
       )}
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
       <Submit label="Email me a code" busy="Sending…" />
     </form>
   );
@@ -68,7 +68,7 @@ export function CodeVerifyForm({ email }: { email: string }) {
         required
         className="text-center font-mono text-2xl tracking-[0.4em]"
       />
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
       <Submit label="Sign in" busy="Checking…" />
     </form>
   );

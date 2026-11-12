@@ -10,21 +10,26 @@ export interface MemberTotals {
   sessionCount: number;
 }
 
-/** Credited hours per member (includes inactive members with history). */
+/** Credited hours per member (includes inactive members with history). Summed in the database. */
 export async function getLeaderboard(): Promise<MemberTotals[]> {
-  const members = await prisma.member.findMany({
-    include: {
-      credits: { where: { status: "APPROVED" }, select: { minutes: true } },
-    },
-  });
+  const [members, totals] = await Promise.all([
+    prisma.member.findMany({ select: { id: true, name: true, email: true, active: true } }),
+    prisma.creditLog.groupBy({
+      by: ["memberId"],
+      where: { status: "APPROVED" },
+      _sum: { minutes: true },
+      _count: true,
+    }),
+  ]);
+  const byMember = new Map(totals.map((t) => [t.memberId, t]));
   return members
     .map((m) => ({
       memberId: m.id,
       name: m.name,
       email: m.email,
       active: m.active,
-      totalMinutes: m.credits.reduce((sum, c) => sum + c.minutes, 0),
-      sessionCount: m.credits.length,
+      totalMinutes: byMember.get(m.id)?._sum.minutes ?? 0,
+      sessionCount: byMember.get(m.id)?._count ?? 0,
     }))
     .filter((m) => m.active || m.totalMinutes > 0)
     .sort((a, b) => b.totalMinutes - a.totalMinutes || a.name.localeCompare(b.name));
@@ -62,16 +67,14 @@ export async function getDigestData(since: Date): Promise<DigestData> {
     getLeaderboard(),
     getCombinedTotal(),
     countAwaitingCredit(),
-    prisma.creditLog.findMany({
+    prisma.creditLog.groupBy({
+      by: ["memberId"],
       where: { status: "APPROVED", reviewedAt: { gte: since } },
-      select: { memberId: true, minutes: true },
+      _sum: { minutes: true },
     }),
   ]);
 
-  const weekByMember = new Map<string, number>();
-  for (const credit of weekCredits) {
-    weekByMember.set(credit.memberId, (weekByMember.get(credit.memberId) ?? 0) + credit.minutes);
-  }
+  const weekByMember = new Map(weekCredits.map((c) => [c.memberId, c._sum.minutes ?? 0]));
 
   const members: DigestMemberRow[] = leaderboard.map((m) => ({
     name: m.active ? m.name : `${m.name} (former)`,
@@ -83,7 +86,7 @@ export async function getDigestData(since: Date): Promise<DigestData> {
   return {
     totalMinutesAllTime: combined.minutes,
     totalSessionsAllTime: combined.sessions,
-    weekMinutes: weekCredits.reduce((sum, c) => sum + c.minutes, 0),
+    weekMinutes: weekCredits.reduce((sum, c) => sum + (c._sum.minutes ?? 0), 0),
     awaitingCreditCount,
     members,
   };

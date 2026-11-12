@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { CLUB_NAME } from "@/lib/constants";
 import { SimpleHeader } from "./HomeButton";
 
-/** Minimal centered layout for email-link pages (claim). */
+/** Minimal centered layout for email-link pages (claim, student confirmation). */
 export function TokenShell({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
     <>
@@ -61,8 +61,8 @@ export function InvalidTokenCard() {
     <TokenShell>
       <TokenCard
         icon="🔗"
-        title="This link isn't valid"
-        body="It may have been mistyped or belong to a request that no longer exists. If you copied it from an email, try clicking the button in the email directly."
+        title="This link has expired"
+        body="Links stop working once a request is closed or removed, and a mistyped link never works. If you copied it from an email, try the button in the email instead."
       />
     </TokenShell>
   );

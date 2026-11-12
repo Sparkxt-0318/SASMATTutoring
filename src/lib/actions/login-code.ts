@@ -6,17 +6,9 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { explainEmailError } from "@/lib/email-errors";
 import { createMemberSession } from "@/lib/member-auth";
-import {
-  CODE_COOLDOWN_SECONDS,
-  CODE_TTL_MINUTES,
-  MAX_CODES_PER_15_MIN,
-  MAX_CODES_PER_DAY,
-  MAX_CODE_ATTEMPTS,
-  codeMatches,
-  generateCode,
-  hashCode,
-  otpAllowedEmails,
-} from "@/lib/login-code";
+import { CODE_TTL_MINUTES, MAX_CODE_ATTEMPTS } from "@/lib/constants";
+import { codeMatches, generateCode, hashCode, otpAllowedEmails } from "@/lib/login-code";
+import { consumeLoginCode, countGuess, issueLoginCode, newestLoginCode } from "@/lib/race-safe";
 import { loginCodeEmail } from "@/emails/templates";
 
 export interface CodeState {
@@ -34,64 +26,56 @@ const nameSchema = z
   .max(100, "Name is too long.")
   .regex(/^[^\u0000-\u001f\u007f]+$/, "Please use a normal name without line breaks.");
 const WRONG = "That code is wrong or has expired. Request a new one.";
-const NOT_A_MEMBER = "This email isn't on the member list. If you are a member, ask an officer to add you.";
+
+function codePage(email: string): never {
+  redirect(`/member/login?email=${encodeURIComponent(email)}`);
+}
 
 /**
  * Step 1 of member sign-in: email a fresh random PIN. This is the ONLY way to
  * sign in as a member. Only active members on the roster (the admin Members tab)
  * can use it, plus any extra addresses in OTP_LOGIN_EMAILS.
+ *
+ * An address that cannot sign in gets exactly what a member sees (the code page)
+ * and no email, so the form does not reveal who is on the roster (#34).
  */
 export async function requestLoginCode(_prev: CodeState, formData: FormData): Promise<CodeState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) return { error: "Please enter a valid email address." };
   const email = parsed.data;
 
-  let member = await prisma.member.findUnique({ where: { email } });
+  const member = await prisma.member.findUnique({ where: { email } });
+  let pendingName: string | undefined;
   if (!member) {
-    if (!otpAllowedEmails().includes(email)) return { error: NOT_A_MEMBER, email };
-    // An extra address from OTP_LOGIN_EMAILS, first visit: ask for a name once, then add it.
+    if (!otpAllowedEmails().includes(email)) codePage(email);
+    // An extra address from OTP_LOGIN_EMAILS, first visit: ask for a name. The
+    // member is only created once the code is verified (#33).
     const rawName = formData.get("name");
     if (rawName === null || String(rawName).trim() === "") return { needsName: true, email };
     const name = nameSchema.safeParse(rawName);
     if (!name.success) return { needsName: true, email, error: name.error.issues[0]?.message };
-    member = await prisma.member.create({ data: { name: name.data, email } });
-  }
-  if (!member.active) return { error: NOT_A_MEMBER, email };
-
-  // Throttle: this is what keeps a 6-digit code safe from guessing.
-  const now = Date.now();
-  const [recent, today, latest] = await Promise.all([
-    prisma.loginCode.count({ where: { memberId: member.id, createdAt: { gte: new Date(now - 15 * 60 * 1000) } } }),
-    prisma.loginCode.count({ where: { memberId: member.id, createdAt: { gte: new Date(now - 24 * 60 * 60 * 1000) } } }),
-    prisma.loginCode.findFirst({ where: { memberId: member.id }, orderBy: { createdAt: "desc" } }),
-  ]);
-  if (latest && now - latest.createdAt.getTime() < CODE_COOLDOWN_SECONDS * 1000) {
-    return { error: "A code was just sent. Please wait a moment before asking for another.", email };
-  }
-  if (recent >= MAX_CODES_PER_15_MIN || today >= MAX_CODES_PER_DAY) {
-    return { error: "Too many codes requested. Please wait a while and try again.", email };
+    pendingName = name.data;
+  } else if (!member.active) {
+    codePage(email);
   }
 
-  // Only the newest code can ever work.
-  await prisma.loginCode.updateMany({
-    where: { memberId: member.id, usedAt: null },
-    data: { usedAt: new Date() },
-  });
   const code = generateCode();
-  const row = await prisma.loginCode.create({
-    data: {
-      memberId: member.id,
-      codeHash: hashCode(member.id, code),
-      expiresAt: new Date(now + CODE_TTL_MINUTES * 60 * 1000),
-    },
-  });
+  const issued = await issueLoginCode(email, hashCode(email, code), { pendingName });
+  if (!issued.ok) {
+    const errors = {
+      cooldown: "A code was just sent. Please wait a moment before asking for another.",
+      limit: "Too many codes requested. Please wait a while and try again.",
+      busy: "Lots of people are signing in right now. Please try again in a few minutes.",
+    };
+    return { error: errors[issued.reason], email };
+  }
 
   try {
-    const mail = loginCodeEmail(member.name, code, CODE_TTL_MINUTES);
-    await sendEmail({ to: member.email, subject: mail.subject, html: mail.html });
+    const mail = loginCodeEmail(member?.name ?? pendingName ?? "", code, CODE_TTL_MINUTES);
+    await sendEmail({ to: email, subject: mail.subject, html: mail.html });
   } catch (err) {
     console.error("Sign-in code email failed:", err);
-    await prisma.loginCode.delete({ where: { id: row.id } });
+    await prisma.loginCode.delete({ where: { id: issued.id } });
     // Only the plain-English explanation is shown, never the provider's raw error text.
     const why = explainEmailError(err instanceof Error ? err.message : String(err));
     return {
@@ -102,45 +86,43 @@ export async function requestLoginCode(_prev: CodeState, formData: FormData): Pr
     };
   }
 
-  redirect(`/member/login?email=${encodeURIComponent(email)}`);
+  codePage(email);
 }
 
-/** Step 2: check the PIN. Single use, five guesses, ten minutes. */
+/**
+ * Step 2: check the PIN. Single use, five guesses, ten minutes. Only the newest
+ * code for the address can work, and every guess is counted before comparing
+ * (#2), so parallel guesses cannot get past the limit.
+ */
 export async function verifyLoginCode(_prev: CodeState, formData: FormData): Promise<CodeState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   const code = String(formData.get("code") ?? "").replace(/\D/g, "");
   if (!parsed.success || code.length !== 6) return { error: "Enter the 6-digit code from your email." };
   const email = parsed.data;
 
-  const member = await prisma.member.findUnique({ where: { email } });
-  if (!member || !member.active) return { error: WRONG };
+  const latest = await newestLoginCode(email);
+  if (!latest) return { error: WRONG };
+  const attempt = await countGuess(latest.id);
+  if (attempt === null) return { error: WRONG };
 
-  const latest = await prisma.loginCode.findFirst({
-    where: { memberId: member.id, usedAt: null, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!latest || latest.attempts >= MAX_CODE_ATTEMPTS) return { error: WRONG };
-
-  if (!codeMatches(member.id, code, latest.codeHash)) {
-    const attempts = latest.attempts + 1;
-    await prisma.loginCode.update({
-      where: { id: latest.id },
-      data: { attempts, ...(attempts >= MAX_CODE_ATTEMPTS ? { usedAt: new Date() } : {}) },
-    });
+  if (!codeMatches(email, code, latest.codeHash)) {
     return {
       error:
-        attempts >= MAX_CODE_ATTEMPTS
-          ? "Too many wrong tries. That code no longer works. Request a new one."
-          : WRONG,
+        attempt >= MAX_CODE_ATTEMPTS ? "Too many wrong tries. That code no longer works. Request a new one." : WRONG,
     };
   }
+  if (!(await consumeLoginCode(latest.id))) return { error: WRONG };
 
-  // Burn it atomically: if two requests race with the right code, only one wins.
-  const burned = await prisma.loginCode.updateMany({
-    where: { id: latest.id, usedAt: null },
-    data: { usedAt: new Date() },
-  });
-  if (burned.count !== 1) return { error: WRONG };
+  let member = await prisma.member.findUnique({ where: { email } });
+  if (!member && latest.pendingName && otpAllowedEmails().includes(email)) {
+    // First sign in of an OTP_LOGIN_EMAILS address, now proven to own the inbox.
+    member = await prisma.member.upsert({
+      where: { email },
+      update: {},
+      create: { email, name: latest.pendingName },
+    });
+  }
+  if (!member?.active) return { error: WRONG };
 
   await createMemberSession(member);
   redirect("/member");

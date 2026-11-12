@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { setMemberActive } from "@/lib/actions/members";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { Notice, type NoticeParams } from "@/components/Notice";
 import { AddMemberForm } from "./AddMemberForm";
+import { TestAccessForm } from "./TestAccessForm";
 import { ImportMembersForm } from "./ImportMembersForm";
 import { formatDate } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Members" };
 
-export default async function AdminMembersPage() {
+export default async function AdminMembersPage({ searchParams }: { searchParams: NoticeParams }) {
+  await requireAdmin();
+  const params = await searchParams;
   const members = await prisma.member.findMany({
     orderBy: [{ active: "desc" }, { name: "asc" }],
     include: { _count: { select: { claimedRequests: true } } },
@@ -17,6 +23,7 @@ export default async function AdminMembersPage() {
 
   return (
     <div>
+      <Notice notice={params.notice} n={params.n} />
       <h1 className="text-3xl font-semibold tracking-tight">Members</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         This is the member list. Everyone active here gets an email when a tutoring request
@@ -34,6 +41,12 @@ export default async function AdminMembersPage() {
       <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm">
         <ImportMembersForm />
       </div>
+
+      {activeCount > 0 && (
+        <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm">
+          <TestAccessForm members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))} />
+        </div>
+      )}
 
       <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
@@ -74,16 +87,20 @@ export default async function AdminMembersPage() {
                 </td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-start justify-end">
-                    <form action={setMemberActive.bind(null, member.id, !member.active)}>
-                      <button
-                        type="submit"
-                        className={
-                          member.active ? "text-red-600 hover:underline" : "text-accent hover:underline"
-                        }
-                      >
-                        {member.active ? "Deactivate" : "Reactivate"}
-                      </button>
-                    </form>
+                    {member.active ? (
+                      <ConfirmButton
+                        label="Deactivate"
+                        confirmLabel="Deactivate"
+                        question="They are signed out, get no more emails, and their upcoming sessions go back to the other members."
+                        action={setMemberActive.bind(null, member.id, false)}
+                      />
+                    ) : (
+                      <form action={setMemberActive.bind(null, member.id, true)}>
+                        <button type="submit" className="text-accent hover:underline">
+                          Reactivate
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -19,6 +19,6 @@ export async function releaseMyClaim(requestId: string): Promise<void> {
 /** Claim an open request straight from the member dashboard. */
 export async function claimRequestAsMember(requestId: string): Promise<void> {
   const member = await requireMember();
-  const won = await claimForMember(member.id, requestId);
-  redirect(`/member?notice=${won ? "claimed" : "taken"}`);
+  const outcome = await claimForMember(member.id, requestId);
+  redirect(`/member?notice=${outcome === "won" ? "claimed" : outcome === "overlap" ? "overlap" : "taken"}`);
 }

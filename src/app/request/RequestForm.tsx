@@ -61,7 +61,7 @@ export function RequestForm({ minDate }: { minDate: string }) {
         />
       </Field>
 
-      <Field label="Grade" htmlFor="gradeLevel" error={state.errors.gradeLevel}>
+      <Field label="Grade" htmlFor="gradeLevel" error={state.errors.gradeLevel} group>
         <SegmentedRadios name="gradeLevel" options={GRADES} defaultValue={state.values.gradeLevel} />
       </Field>
 
@@ -106,7 +106,8 @@ export function RequestForm({ minDate }: { minDate: string }) {
         label="Did you receive help from your teacher before asking our help?"
         htmlFor="receivedTeacherHelp"
         error={state.errors.receivedTeacherHelp}
-        hint="This is for surveying purposes only, it is not due to any consequences."
+        hint="This is only for a club survey. Your answer does not change anything about your request."
+        group
       >
         <SegmentedRadios
           name="receivedTeacherHelp"
@@ -160,7 +161,9 @@ export function RequestForm({ minDate }: { minDate: string }) {
       </div>
 
       {state.errors.form && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{state.errors.form}</p>
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          {state.errors.form}
+        </p>
       )}
 
       <SubmitButton />

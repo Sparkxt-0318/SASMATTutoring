@@ -22,9 +22,12 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
 - DB URLs live in `prisma.config.ts` (Prisma 7 style), not in `schema.prisma`.
   App connects through `@prisma/adapter-pg` in `src/lib/db.ts`.
 - Mutations are server actions in `src/lib/actions/`. Every admin action calls
-  `requireAdmin()` itself; the admin layout check alone is not enough.
+  `requireAdmin()` itself, and so does every admin page; the admin layout check alone is
+  not enough. Officer actions end with `backWithNotice()` (`src/lib/notices.ts`).
 - Claiming must stay race-safe: a conditional `updateMany` guarded on
-  `status: "OPEN"` (see `src/lib/actions/claims.ts`). Never claim on GET:
+  `status: "OPEN"` (`claimRequestRow` in `src/lib/race-safe.ts`, called only through
+  `claimForMember` in `src/lib/claiming.ts`). Count-then-write limits (request form, PINs,
+  overlap) use advisory locks in the same file. Never claim on GET:
   email scanners prefetch links.
 - Prisma 7 does not regenerate the client after `migrate dev`; run
   `npx prisma generate` yourself. Vercel builds with `vercel-build`, which also
@@ -36,15 +39,20 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
   list is the `Member` table (admin Members tab, CSV import via `importMembers` and
   `src/lib/roster-import.ts`): only active members can sign in, plus extra addresses in
   `OTP_LOGIN_EMAILS` (first sign in asks for a name and adds them). `getMember()` re-checks
-  the database on every request, so deactivating signs out at once. Never commit real
+  the database on every request (and checks the session's `sessionVersion`), so
+  deactivating signs out at once. Never commit real
   member names or emails (the repo is public). Every member server action must call
-  `requireMember()`. Claiming (email link and dashboard) goes through `claimForMember`
-  in `src/lib/claiming.ts`.
+  `requireMember()`. Claiming (email link, dashboard, officer Assign) goes through
+  `claimForMember` in `src/lib/claiming.ts`.
 - PIN details: random 6 digits via `crypto.randomInt`, stored only as an HMAC, single use,
   10 minutes, 5 guesses, request limits. Alert emails go to `alertRecipients()`
   (REPORT_EMAIL plus EXTRA_ALERT_EMAILS); never hardcode officer email addresses in the repo
-  (it is public), use the settings. The `passwordHash`, `mustChangePassword`, `failedLogins`
-  and `lockedUntil` columns on `Member` are unused leftovers.
+  (it is public), use the settings.
+- Student requests start as `UNCONFIRMED`; members are emailed only after the student
+  confirms (`confirmRequest`, page `/request/confirm/[token]`, no writes on GET).
+- Every email counts against a daily budget (`src/lib/email-budget.ts`). Member blasts
+  are `sendBatch(..., "bulk")` and pause at 80% of `EMAIL_DAILY_LIMIT`; everything else
+  is "essential".
 - Slow work (member email blasts, reopen notices) runs inside `after()` from
   `next/server` so users never wait on the mail server. Cron routes must use
   `cronAuthorized()` (`src/lib/cron.ts`), never compare to the raw env var.
@@ -57,5 +65,5 @@ contribution-style grid (`src/components/ProgressGrid.tsx`, goal =
   `TEST_EMAIL_OVERRIDE` (reroute everything). SMTP is chosen automatically when
   `SMTP_USER`/`SMTP_PASSWORD` are set; Gmail needs only those two (`smtpSettings()`).
   Keep dry-run on in dev; never put real member emails in `prisma/seed.ts`.
-- Verify changes with `npm run lint`, `npx tsc --noEmit`, `npm run build`, and
+- Verify changes with `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`, and
   `npm run race-test` (needs Postgres running and `.env` configured).

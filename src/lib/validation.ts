@@ -7,10 +7,13 @@ import {
   MIN_MEETING_MINUTES,
   STUDENT_EMAIL_DOMAIN,
   YES_NO,
+  TIMEZONE,
   isPast,
   meetingMinutes,
   shanghaiDateTime,
 } from "./constants";
+
+const shanghaiDay = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE });
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -51,7 +54,13 @@ export const requestSchema = z
     }
     const start = shanghaiDateTime(data.meetingDate, data.startTime);
     const end = shanghaiDateTime(data.meetingDate, data.endTime);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    // JavaScript rolls impossible days forward (February 31 becomes March 3), so
+    // the day must survive a round trip back to a Shanghai date (#10).
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      shanghaiDay.format(start) !== data.meetingDate
+    ) {
       ctx.addIssue({ code: "custom", path: ["meetingDate"], message: "Please pick a valid date." });
       return;
     }

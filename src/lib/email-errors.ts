@@ -7,7 +7,7 @@ export function explainEmailError(raw: string): string | null {
   const text = raw.toLowerCase();
 
   if (/only send testing emails to your own email/.test(text)) {
-    return "Resend is still in test mode, so it only delivers to the address your Resend account was created with. To email anyone else, switch the site to a normal mailbox: set EMAIL_PROVIDER to smtp and fill in the SMTP settings (see the README), or verify a domain in Resend.";
+    return "Resend is still in test mode, so it only delivers to the address your Resend account was created with. To email anyone else, switch the site to a Gmail account: set SMTP_USER and SMTP_PASSWORD (an app password) in Vercel, or verify a domain in Resend.";
   }
   if (/api key/.test(text) && /(invalid|missing|not found|restricted)/.test(text)) {
     return "The Resend API key is missing or wrong. Check RESEND_API_KEY in Vercel, or switch to SMTP.";

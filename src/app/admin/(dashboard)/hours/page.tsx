@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { awardCredit, revokeCredit } from "@/lib/actions/credits";
-import { cancelRequest } from "@/lib/actions/admin";
+import { cancelRequest, restoreRequest } from "@/lib/actions/admin";
+import { requireAdmin } from "@/lib/auth";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { Notice, type NoticeParams } from "@/components/Notice";
 import {
   formatDate,
   formatMeeting,
@@ -20,8 +23,17 @@ function splitByEnded<T extends { meetingEnd: Date }>(rows: T[]): { ended: T[]; 
   };
 }
 
-export default async function AdminHoursPage() {
-  const [claimed, credits] = await Promise.all([
+const RECENT_DAYS = 30;
+
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+export default async function AdminHoursPage({ searchParams }: { searchParams: NoticeParams }) {
+  await requireAdmin();
+  const params = await searchParams;
+  const since = daysAgo(RECENT_DAYS);
+  const [claimed, credits, cancelled] = await Promise.all([
     prisma.tutoringRequest.findMany({
       where: { status: "CLAIMED" },
       orderBy: { meetingStart: "asc" },
@@ -33,12 +45,21 @@ export default async function AdminHoursPage() {
       take: 100,
       include: { member: true, request: true },
     }),
+    // Cancelled sessions whose meeting was in the last 30 days or is still ahead,
+    // so a mistaken cancel can be undone (#6).
+    prisma.tutoringRequest.findMany({
+      where: { status: "CANCELLED", meetingStart: { gte: since } },
+      orderBy: { meetingStart: "desc" },
+      take: 50,
+      include: { claimedBy: true },
+    }),
   ]);
 
   const { ended, upcoming } = splitByEnded(claimed);
 
   return (
     <div>
+      <Notice notice={params.notice} n={params.n} />
       <h1 className="text-3xl font-semibold tracking-tight">Hours</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Credit is never automatic. Once a week, go through the sessions below and record the time
@@ -100,14 +121,13 @@ export default async function AdminHoursPage() {
                     Award credit
                   </button>
                 </form>
-                <form action={cancelRequest.bind(null, request.id)}>
-                  <button
-                    type="submit"
-                    className="rounded-full bg-surface px-4 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-hairline/60"
-                  >
-                    Didn&rsquo;t happen
-                  </button>
-                </form>
+                <ConfirmButton
+                  label="Didn't happen"
+                  confirmLabel="Mark as not happened"
+                  question="No credit is given. You can restore it under Recently cancelled."
+                  className="text-muted hover:underline"
+                  action={cancelRequest.bind(null, request.id, "hours")}
+                />
               </div>
             </div>
           ))}
@@ -165,17 +185,54 @@ export default async function AdminHoursPage() {
                     {credit.reviewedAt ? formatDate(credit.reviewedAt) : "Unknown"}
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <form action={revokeCredit.bind(null, credit.id)}>
-                      <button type="submit" className="text-red-600 hover:underline">
-                        Undo
-                      </button>
-                    </form>
+                    <ConfirmButton
+                      label="Undo"
+                      confirmLabel="Remove credit"
+                      question="The session goes back under Ready for credit."
+                      action={revokeCredit.bind(null, credit.id)}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {cancelled.length > 0 && (
+        <details className="mt-10">
+          <summary className="cursor-pointer text-lg font-semibold tracking-tight">
+            Recently cancelled <span className="text-sm font-normal text-muted">({cancelled.length})</span>
+          </summary>
+          <p className="mt-1 text-sm text-muted">
+            Cancelled sessions from the last {RECENT_DAYS} days. Restore gives the session back to its
+            tutor, or emails members again if it had none and the meeting is still ahead.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-2xl bg-white shadow-sm">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <tbody>
+                {cancelled.map((request) => (
+                  <tr key={request.id} className="border-b border-hairline/40 last:border-0">
+                    <td className="px-5 py-3.5 font-medium">{request.claimedBy?.name ?? "No tutor"}</td>
+                    <td className="px-5 py-3.5 text-muted">
+                      {request.subject} with {request.studentName}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-muted">
+                      {formatMeeting(request.meetingStart, request.meetingEnd)}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <form action={restoreRequest.bind(null, request.id)}>
+                        <button type="submit" className="text-accent hover:underline">
+                          Restore
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </div>
   );
